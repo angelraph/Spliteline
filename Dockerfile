@@ -13,6 +13,8 @@ RUN npm ci --omit=dev
 
 COPY server.js ./
 COPY public ./public
+COPY scripts/entrypoint.sh ./scripts/entrypoint.sh
+RUN chmod +x ./scripts/entrypoint.sh
 
 EXPOSE 8787
-CMD ["sh", "-c", "onchainos wallet login && node server.js"]
+CMD ["./scripts/entrypoint.sh"]

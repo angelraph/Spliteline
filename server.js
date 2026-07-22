@@ -36,6 +36,8 @@ const TRANSFER_TOPIC = keccak256(toHex("Transfer(address,address,uint256)"));
 const RPC_TIMEOUT_MS = 8_000;
 const FACILITATOR_TIMEOUT_MS = 10_000;
 const PAYOUT_TIMEOUT_MS = 20_000;
+const DEPOSIT_VERIFY_ATTEMPTS = 3;
+const DEPOSIT_VERIFY_RETRY_DELAY_MS = 1_200;
 
 if (!process.env.FACILITATOR_PRIVATE_KEY) {
   console.error("Missing FACILITATOR_PRIVATE_KEY in environment");
@@ -83,7 +85,34 @@ function withTimeout(promise, ms, label) {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
+async function withRetry(fn, { attempts = 3, delayMs = 1_000 } = {}) {
+  let lastErr;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (i < attempts - 1) await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  throw lastErr;
+}
+
 // ---- Replay guard (deposit tx hashes already spent) ----------------------
+// Every read-modify-write goes through this single in-process lock, and
+// "already used" is checked-and-marked atomically via reserveDeposit —
+// otherwise two concurrent requests for the same deposit hash could both
+// pass the old check-then-write and both trigger a real payout.
+
+let depositLock = Promise.resolve();
+function withDepositLock(fn) {
+  const run = depositLock.then(fn, fn);
+  depositLock = run.then(
+    () => {},
+    () => {},
+  );
+  return run;
+}
 
 async function loadUsedDeposits() {
   try {
@@ -94,24 +123,42 @@ async function loadUsedDeposits() {
   }
 }
 
-async function markDepositUsed(txHash) {
+async function saveUsedDeposits(used) {
   await fs.mkdir(path.dirname(USED_DEPOSITS_FILE), { recursive: true });
-  const used = await loadUsedDeposits();
-  used.add(txHash.toLowerCase());
   await fs.writeFile(USED_DEPOSITS_FILE, JSON.stringify([...used], null, 2));
+}
+
+// Returns false if the deposit was already reserved (by this or an earlier request).
+async function reserveDeposit(txHash) {
+  return withDepositLock(async () => {
+    const used = await loadUsedDeposits();
+    const key = txHash.toLowerCase();
+    if (used.has(key)) return false;
+    used.add(key);
+    await saveUsedDeposits(used);
+    return true;
+  });
+}
+
+// Undoes a reservation when the payout it was guarding failed, so one failed
+// attempt doesn't permanently block a legitimate retry of the same deposit.
+async function releaseDeposit(txHash) {
+  return withDepositLock(async () => {
+    const used = await loadUsedDeposits();
+    used.delete(txHash.toLowerCase());
+    await saveUsedDeposits(used);
+  });
 }
 
 // ---- Deposit verification (real on-chain check, no mocking) --------------
 
 async function verifyDeposit({ depositTxHash, expectedAmountAtomic }) {
-  const used = await loadUsedDeposits();
-  if (used.has(depositTxHash.toLowerCase())) {
-    return { ok: false, reason: "deposit_already_used" };
-  }
-
   let receipt;
   try {
-    receipt = await publicClient.getTransactionReceipt({ hash: depositTxHash });
+    receipt = await withRetry(() => publicClient.getTransactionReceipt({ hash: depositTxHash }), {
+      attempts: DEPOSIT_VERIFY_ATTEMPTS,
+      delayMs: DEPOSIT_VERIFY_RETRY_DELAY_MS,
+    });
   } catch {
     return { ok: false, reason: "deposit_tx_not_found" };
   }
@@ -316,12 +363,16 @@ app.post("/execute", async (req, res) => {
     return res.status(402).json({ ok: false, error: verification.reason, detail: verification, feeTxHash: settleResult.transaction });
   }
 
-  const payout = await executePayout({ recipient, amount });
-  if (!payout.ok) {
-    return res.status(500).json({ ok: false, error: payout.reason, detail: payout, feeTxHash: settleResult.transaction });
+  const reserved = await reserveDeposit(depositTxHash);
+  if (!reserved) {
+    return res.status(402).json({ ok: false, error: "deposit_already_used", feeTxHash: settleResult.transaction });
   }
 
-  await markDepositUsed(depositTxHash);
+  const payout = await executePayout({ recipient, amount });
+  if (!payout.ok) {
+    await releaseDeposit(depositTxHash);
+    return res.status(500).json({ ok: false, error: payout.reason, detail: payout, feeTxHash: settleResult.transaction });
+  }
 
   return res.json({
     ok: true,

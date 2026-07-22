@@ -3,4 +3,5 @@ node_modules
 *.log
 data/
 scripts/
+!scripts/entrypoint.sh
 .git
