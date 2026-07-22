@@ -1,6 +1,6 @@
 import "dotenv/config";
 import express from "express";
-import { createWalletClient, createPublicClient, http, publicActions, keccak256, toHex, pad } from "viem";
+import { createWalletClient, createPublicClient, http, fallback, publicActions, keccak256, toHex, pad } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { x402Facilitator } from "@x402/core/facilitator";
 import { decodePaymentSignatureHeader, encodePaymentRequiredHeader } from "@x402/core/http";
@@ -33,20 +33,30 @@ const PORT = process.env.PORT || 8787;
 const USED_DEPOSITS_FILE = path.join(process.cwd(), "data", "used-deposits.json");
 const TRANSFER_TOPIC = keccak256(toHex("Transfer(address,address,uint256)"));
 
+const RPC_TIMEOUT_MS = 8_000;
+const FACILITATOR_TIMEOUT_MS = 10_000;
+const PAYOUT_TIMEOUT_MS = 20_000;
+
 if (!process.env.FACILITATOR_PRIVATE_KEY) {
   console.error("Missing FACILITATOR_PRIVATE_KEY in environment");
   process.exit(1);
 }
 
 // ---- Chain clients ------------------------------------------------------
+// fallback() tries each RPC in order and moves to the next on error/timeout,
+// instead of hanging on a single endpoint (rpc.xlayer.tech / xlayerrpc.okx.com).
 
-const publicClient = createPublicClient({ chain: XLAYER, transport: http() });
+const rpcTransport = fallback(
+  XLAYER.rpcUrls.default.http.map((url) => http(url, { timeout: RPC_TIMEOUT_MS })),
+);
+
+const publicClient = createPublicClient({ chain: XLAYER, transport: rpcTransport });
 
 const facilitatorAccount = privateKeyToAccount(process.env.FACILITATOR_PRIVATE_KEY);
 const facilitatorWalletClient = createWalletClient({
   account: facilitatorAccount,
   chain: XLAYER,
-  transport: http(),
+  transport: rpcTransport,
 }).extend(publicActions);
 
 const evmSigner = toFacilitatorEvmSigner({
@@ -61,6 +71,17 @@ const evmSigner = toFacilitatorEvmSigner({
 
 const facilitator = new x402Facilitator();
 registerExactEvmScheme(facilitator, { signer: evmSigner, networks: NETWORK });
+
+// ---- Timeout helper (the x402 facilitator has no built-in timeout, so a
+// stalled verify/settle call would otherwise hang the request forever) -----
+
+function withTimeout(promise, ms, label) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label}_timeout`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
 
 // ---- Replay guard (deposit tx hashes already spent) ----------------------
 
@@ -146,7 +167,10 @@ async function executePayout({ recipient, amount }) {
 
   const runSend = async (extraArgs = []) => {
     try {
-      const { stdout } = await execFileAsync("onchainos", [...args, ...extraArgs]);
+      const { stdout } = await execFileAsync("onchainos", [...args, ...extraArgs], {
+        timeout: PAYOUT_TIMEOUT_MS,
+        killSignal: "SIGTERM",
+      });
       return { exitCode: 0, json: JSON.parse(stdout) };
     } catch (err) {
       const stdout = err.stdout || "";
@@ -156,13 +180,17 @@ async function executePayout({ recipient, amount }) {
       } catch {
         // ignore
       }
-      return { exitCode: err.code, json, raw: stdout, stderr: err.stderr };
+      return { exitCode: err.code, killed: Boolean(err.killed), json, raw: stdout, stderr: err.stderr };
     }
   };
 
   const first = await runSend();
   if (first.exitCode === 0 && first.json?.ok) {
     return { ok: true, txHash: first.json.data?.txHash, orderId: first.json.data?.orderId };
+  }
+
+  if (first.killed) {
+    return { ok: false, reason: "payout_timeout", detail: `onchainos wallet send did not respond within ${PAYOUT_TIMEOUT_MS}ms` };
   }
 
   if (first.exitCode === 2 && first.json?.message) {
@@ -174,6 +202,9 @@ async function executePayout({ recipient, amount }) {
     const second = await runSend(["--force"]);
     if (second.exitCode === 0 && second.json?.ok) {
       return { ok: true, txHash: second.json.data?.txHash, orderId: second.json.data?.orderId };
+    }
+    if (second.killed) {
+      return { ok: false, reason: "payout_timeout", detail: `onchainos wallet send did not respond within ${PAYOUT_TIMEOUT_MS}ms` };
     }
     return { ok: false, reason: "payout_failed_after_confirm", detail: second.json || second.raw };
   }
@@ -248,12 +279,30 @@ app.post("/execute", async (req, res) => {
     return res.status(400).json({ ok: false, error: "invalid_payment_signature_header" });
   }
 
-  const verifyResult = await facilitator.verify(decodedPayment, PAYMENT_REQUIREMENTS);
+  let verifyResult;
+  try {
+    verifyResult = await withTimeout(
+      facilitator.verify(decodedPayment, PAYMENT_REQUIREMENTS),
+      FACILITATOR_TIMEOUT_MS,
+      "facilitator_verify",
+    );
+  } catch (err) {
+    return res.status(504).json({ ok: false, error: "facilitator_verify_timeout", detail: err.message });
+  }
   if (!verifyResult.isValid) {
     return send402(res, { error: "payment_verification_failed", detail: verifyResult.invalidReason });
   }
 
-  const settleResult = await facilitator.settle(decodedPayment, PAYMENT_REQUIREMENTS);
+  let settleResult;
+  try {
+    settleResult = await withTimeout(
+      facilitator.settle(decodedPayment, PAYMENT_REQUIREMENTS),
+      FACILITATOR_TIMEOUT_MS,
+      "facilitator_settle",
+    );
+  } catch (err) {
+    return res.status(504).json({ ok: false, error: "facilitator_settle_timeout", detail: err.message });
+  }
   if (!settleResult.success) {
     return send402(res, { error: "payment_settlement_failed", detail: settleResult.errorReason });
   }
