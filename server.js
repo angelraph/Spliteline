@@ -299,20 +299,9 @@ app.get("/health", (_req, res) => {
 });
 
 app.post("/execute", async (req, res) => {
-  const { depositTxHash, recipient, amount } = req.body || {};
-
-  if (!depositTxHash || !/^0x[a-fA-F0-9]{64}$/.test(depositTxHash)) {
-    return res.status(400).json({ ok: false, error: "invalid_deposit_tx_hash" });
-  }
-  if (!recipient || !/^0x[a-fA-F0-9]{40}$/.test(recipient)) {
-    return res.status(400).json({ ok: false, error: "invalid_recipient_address" });
-  }
-  const amountNum = Number(amount);
-  if (!amount || Number.isNaN(amountNum) || amountNum <= 0) {
-    return res.status(400).json({ ok: false, error: "invalid_amount" });
-  }
-
-  // ---- Step 1: payment must VERIFY and SETTLE for real before anything else runs ----
+  // ---- Step 1: the x402 challenge must be returned before any business input
+  // validation, so an unpaid or malformed request always gets 402 + accepts,
+  // never a 400/404 — payment must VERIFY and SETTLE for real before anything else runs ----
 
   const signatureHeader = req.get("PAYMENT-SIGNATURE");
   if (!signatureHeader) {
@@ -354,7 +343,20 @@ app.post("/execute", async (req, res) => {
     return send402(res, { error: "payment_settlement_failed", detail: settleResult.errorReason });
   }
 
-  // ---- Step 2: fee payment is now genuinely confirmed on-chain — safe to act ----
+  // ---- Step 2: fee payment is now genuinely confirmed on-chain — safe to validate and act ----
+
+  const { depositTxHash, recipient, amount } = req.body || {};
+
+  if (!depositTxHash || !/^0x[a-fA-F0-9]{64}$/.test(depositTxHash)) {
+    return res.status(400).json({ ok: false, error: "invalid_deposit_tx_hash", feeTxHash: settleResult.transaction });
+  }
+  if (!recipient || !/^0x[a-fA-F0-9]{40}$/.test(recipient)) {
+    return res.status(400).json({ ok: false, error: "invalid_recipient_address", feeTxHash: settleResult.transaction });
+  }
+  const amountNum = Number(amount);
+  if (!amount || Number.isNaN(amountNum) || amountNum <= 0) {
+    return res.status(400).json({ ok: false, error: "invalid_amount", feeTxHash: settleResult.transaction });
+  }
 
   const expectedAmountAtomic = toAtomicAmount(amount).toString();
 
