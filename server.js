@@ -27,7 +27,7 @@ const TOKEN_ADDRESS = "0x779Ded0c9e1022225f8E0630b35a9b54bE713736"; // USD₮0 o
 const TOKEN_EIP712 = { name: "USD₮0", version: "1" }; // brute-force-matched against on-chain DOMAIN_SEPARATOR
 const TOKEN_DECIMALS = 6;
 const AVENOR_ADDRESS = process.env.AVENOR_ADDRESS || "0x7fd56a157a70f1011c9a2fbd01e98595f08682f8";
-const FEE_AMOUNT_ATOMIC = "200000"; // 0.20 USD₮0 per execution
+const FEE_AMOUNT_ATOMIC = "500000"; // 0.50 USD₮0 per execution — must match the registered marketplace listing fee
 const PORT = process.env.PORT || 8787;
 
 const USED_DEPOSITS_FILE = path.join(process.cwd(), "data", "used-deposits.json");
