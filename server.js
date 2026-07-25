@@ -298,6 +298,16 @@ app.get("/health", (_req, res) => {
   res.json({ ok: true, service: "AVENOR Pay", network: NETWORK, avenorAddress: AVENOR_ADDRESS });
 });
 
+// x402 discovery probes /execute with GET and no payment — must return the
+// same 402 challenge, not a 404, or the resource looks unroutable to clients
+// that check availability before switching to POST for the real call.
+app.get("/execute", (req, res) => {
+  if (!req.get("PAYMENT-SIGNATURE")) {
+    return send402(res);
+  }
+  return res.status(405).json({ ok: false, error: "method_not_allowed", detail: "use POST /execute" });
+});
+
 app.post("/execute", async (req, res) => {
   // ---- Step 1: the x402 challenge must be returned before any business input
   // validation, so an unpaid or malformed request always gets 402 + accepts,
