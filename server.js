@@ -1,11 +1,7 @@
 import "dotenv/config";
 import express from "express";
-import { createWalletClient, http, fallback, publicActions } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
-import { x402Facilitator } from "@x402/core/facilitator";
+import { OKXFacilitatorClient } from "@okxweb3/x402-core";
 import { decodePaymentSignatureHeader, encodePaymentRequiredHeader } from "@x402/core/http";
-import { toFacilitatorEvmSigner } from "@x402/evm";
-import { registerExactEvmScheme } from "@x402/evm/exact/facilitator";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import fs from "node:fs/promises";
@@ -14,13 +10,6 @@ import path from "node:path";
 const execFileAsync = promisify(execFile);
 
 // ---- Config -----------------------------------------------------------
-
-const XLAYER = {
-  id: 196,
-  name: "X Layer",
-  nativeCurrency: { name: "OKB", symbol: "OKB", decimals: 18 },
-  rpcUrls: { default: { http: ["https://rpc.xlayer.tech", "https://xlayerrpc.okx.com"] } },
-};
 
 const NETWORK = "eip155:196";
 const TOKEN_ADDRESS = "0x779Ded0c9e1022225f8E0630b35a9b54bE713736"; // USD₮0 on XLayer, verified on-chain
@@ -33,42 +22,32 @@ const PORT = process.env.PORT || 8787;
 
 const USED_SETTLEMENTS_FILE = path.join(process.cwd(), "data", "used-settlements.json");
 
-const RPC_TIMEOUT_MS = 8_000;
 const FACILITATOR_TIMEOUT_MS = 10_000;
 const PAYOUT_TIMEOUT_MS = 20_000;
+const SETTLE_POLL_INTERVAL_MS = 1_000;
+const SETTLE_POLL_DEADLINE_MS = 8_000;
 
-if (!process.env.FACILITATOR_PRIVATE_KEY) {
-  console.error("Missing FACILITATOR_PRIVATE_KEY in environment");
-  process.exit(1);
+for (const key of ["OKX_API_KEY", "OKX_SECRET_KEY", "OKX_PASSPHRASE"]) {
+  if (!process.env[key]) {
+    console.error(`Missing ${key} in environment`);
+    process.exit(1);
+  }
 }
 
-// ---- Chain clients ------------------------------------------------------
-// fallback() tries each RPC in order and moves to the next on error/timeout,
-// instead of hanging on a single endpoint (rpc.xlayer.tech / xlayerrpc.okx.com).
+// ---- Facilitator ----------------------------------------------------------
+// AVENOR is a seller integrated via the official OKX Payment SDK: verify()/
+// settle() are proxied to OKX's hosted facilitator over HTTP (HMAC-authenticated
+// with the API key/secret/passphrase below), not self-signed on our own key —
+// this is what lets OKX's marketplace observe and confirm the payment.
 
-const rpcTransport = fallback(
-  XLAYER.rpcUrls.default.http.map((url) => http(url, { timeout: RPC_TIMEOUT_MS })),
-);
-
-const facilitatorAccount = privateKeyToAccount(process.env.FACILITATOR_PRIVATE_KEY);
-const facilitatorWalletClient = createWalletClient({
-  account: facilitatorAccount,
-  chain: XLAYER,
-  transport: rpcTransport,
-}).extend(publicActions);
-
-const evmSigner = toFacilitatorEvmSigner({
-  address: facilitatorAccount.address,
-  getCode: facilitatorWalletClient.getCode,
-  readContract: facilitatorWalletClient.readContract,
-  verifyTypedData: facilitatorWalletClient.verifyTypedData,
-  writeContract: facilitatorWalletClient.writeContract,
-  sendTransaction: facilitatorWalletClient.sendTransaction,
-  waitForTransactionReceipt: facilitatorWalletClient.waitForTransactionReceipt,
+const facilitator = new OKXFacilitatorClient({
+  apiKey: process.env.OKX_API_KEY,
+  secretKey: process.env.OKX_SECRET_KEY,
+  passphrase: process.env.OKX_PASSPHRASE,
+  // Wait for on-chain confirmation before settle() resolves, so a 200 response
+  // from /execute always means the payment is genuinely final — no polling.
+  syncSettle: true,
 });
-
-const facilitator = new x402Facilitator();
-registerExactEvmScheme(facilitator, { signer: evmSigner, networks: NETWORK });
 
 // ---- Timeout helper (the x402 facilitator has no built-in timeout, so a
 // stalled verify/settle call would otherwise hang the request forever) -----
@@ -79,6 +58,32 @@ function withTimeout(promise, ms, label) {
     timer = setTimeout(() => reject(new Error(`${label}_timeout`)), ms);
   });
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Polls the facilitator's real on-chain settlement status when settle()
+// itself reports status="timeout", instead of assuming success or failure.
+async function pollSettleStatus(txHash, fallbackResult) {
+  const deadline = Date.now() + SETTLE_POLL_DEADLINE_MS;
+  while (Date.now() < deadline) {
+    await sleep(SETTLE_POLL_INTERVAL_MS);
+    let status;
+    try {
+      status = await withTimeout(facilitator.getSettleStatus(txHash), FACILITATOR_TIMEOUT_MS, "facilitator_settle_status");
+    } catch {
+      continue;
+    }
+    if (status.status === "success") {
+      return { ...fallbackResult, success: true, status: "success" };
+    }
+    if (status.status === "failed") {
+      return { ...fallbackResult, success: false, errorReason: status.errorReason || "settlement_failed_on_chain" };
+    }
+  }
+  return { ...fallbackResult, success: false, errorReason: "settlement_status_unresolved" };
 }
 
 // ---- Replay guard (settlement tx hashes already paid out) ----------------
@@ -333,6 +338,13 @@ app.post("/execute", async (req, res) => {
   } catch (err) {
     return res.status(504).json({ ok: false, error: "facilitator_settle_timeout", detail: err.message });
   }
+
+  // With syncSettle the facilitator normally resolves success/failure directly;
+  // "timeout" means the on-chain confirmation didn't land in time, so poll the
+  // real status instead of guessing whether the payment actually landed.
+  if (settleResult.success && settleResult.status === "timeout") {
+    settleResult = await pollSettleStatus(settleResult.transaction, settleResult);
+  }
   if (!settleResult.success) {
     return send402(res, { requirements, extra: { error: "payment_settlement_failed", detail: settleResult.errorReason } });
   }
@@ -364,5 +376,5 @@ app.post("/execute", async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`AVENOR Pay listening on port ${PORT}`);
-  console.log(`Facilitator signer address: ${facilitatorAccount.address}`);
+  console.log(`Facilitator: OKX-hosted (network ${NETWORK}), payTo ${AVENOR_ADDRESS}`);
 });
