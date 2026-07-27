@@ -1,6 +1,6 @@
 import "dotenv/config";
 import express from "express";
-import { createWalletClient, createPublicClient, http, fallback, publicActions, keccak256, toHex, pad } from "viem";
+import { createWalletClient, http, fallback, publicActions } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { x402Facilitator } from "@x402/core/facilitator";
 import { decodePaymentSignatureHeader, encodePaymentRequiredHeader } from "@x402/core/http";
@@ -24,20 +24,18 @@ const XLAYER = {
 
 const NETWORK = "eip155:196";
 const TOKEN_ADDRESS = "0x779Ded0c9e1022225f8E0630b35a9b54bE713736"; // USD₮0 on XLayer, verified on-chain
-const TOKEN_EIP712 = { name: "USD₮0", version: "1" }; // brute-force-matched against on-chain DOMAIN_SEPARATOR
+const TOKEN_EIP712 = { name: "USD₮0", version: "1" }; // matches on-chain DOMAIN_SEPARATOR, verified against eth_call
 const TOKEN_DECIMALS = 6;
 const AVENOR_ADDRESS = process.env.AVENOR_ADDRESS || "0x7fd56a157a70f1011c9a2fbd01e98595f08682f8";
-const FEE_AMOUNT_ATOMIC = "500000"; // 0.50 USD₮0 per execution — must match the registered marketplace listing fee
+const BASE_FEE_ATOMIC = "500000"; // 0.50 USD₮0 — AVENOR's flat fee, added on top of the relay amount in the single x402 payment
+const BASE_FEE_READABLE = "0.50";
 const PORT = process.env.PORT || 8787;
 
-const USED_DEPOSITS_FILE = path.join(process.cwd(), "data", "used-deposits.json");
-const TRANSFER_TOPIC = keccak256(toHex("Transfer(address,address,uint256)"));
+const USED_SETTLEMENTS_FILE = path.join(process.cwd(), "data", "used-settlements.json");
 
 const RPC_TIMEOUT_MS = 8_000;
 const FACILITATOR_TIMEOUT_MS = 10_000;
 const PAYOUT_TIMEOUT_MS = 20_000;
-const DEPOSIT_VERIFY_ATTEMPTS = 3;
-const DEPOSIT_VERIFY_RETRY_DELAY_MS = 1_200;
 
 if (!process.env.FACILITATOR_PRIVATE_KEY) {
   console.error("Missing FACILITATOR_PRIVATE_KEY in environment");
@@ -51,8 +49,6 @@ if (!process.env.FACILITATOR_PRIVATE_KEY) {
 const rpcTransport = fallback(
   XLAYER.rpcUrls.default.http.map((url) => http(url, { timeout: RPC_TIMEOUT_MS })),
 );
-
-const publicClient = createPublicClient({ chain: XLAYER, transport: rpcTransport });
 
 const facilitatorAccount = privateKeyToAccount(process.env.FACILITATOR_PRIVATE_KEY);
 const facilitatorWalletClient = createWalletClient({
@@ -85,107 +81,56 @@ function withTimeout(promise, ms, label) {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
-async function withRetry(fn, { attempts = 3, delayMs = 1_000 } = {}) {
-  let lastErr;
-  for (let i = 0; i < attempts; i++) {
-    try {
-      return await fn();
-    } catch (err) {
-      lastErr = err;
-      if (i < attempts - 1) await new Promise((resolve) => setTimeout(resolve, delayMs));
-    }
-  }
-  throw lastErr;
-}
-
-// ---- Replay guard (deposit tx hashes already spent) ----------------------
+// ---- Replay guard (settlement tx hashes already paid out) ----------------
 // Every read-modify-write goes through this single in-process lock, and
-// "already used" is checked-and-marked atomically via reserveDeposit —
-// otherwise two concurrent requests for the same deposit hash could both
-// pass the old check-then-write and both trigger a real payout.
+// "already used" is checked-and-marked atomically via reserveSettlement —
+// otherwise two concurrent requests for the same settlement could both pass
+// the old check-then-write and both trigger a real payout.
 
-let depositLock = Promise.resolve();
-function withDepositLock(fn) {
-  const run = depositLock.then(fn, fn);
-  depositLock = run.then(
+let settlementLock = Promise.resolve();
+function withSettlementLock(fn) {
+  const run = settlementLock.then(fn, fn);
+  settlementLock = run.then(
     () => {},
     () => {},
   );
   return run;
 }
 
-async function loadUsedDeposits() {
+async function loadUsedSettlements() {
   try {
-    const raw = await fs.readFile(USED_DEPOSITS_FILE, "utf8");
+    const raw = await fs.readFile(USED_SETTLEMENTS_FILE, "utf8");
     return new Set(JSON.parse(raw));
   } catch {
     return new Set();
   }
 }
 
-async function saveUsedDeposits(used) {
-  await fs.mkdir(path.dirname(USED_DEPOSITS_FILE), { recursive: true });
-  await fs.writeFile(USED_DEPOSITS_FILE, JSON.stringify([...used], null, 2));
+async function saveUsedSettlements(used) {
+  await fs.mkdir(path.dirname(USED_SETTLEMENTS_FILE), { recursive: true });
+  await fs.writeFile(USED_SETTLEMENTS_FILE, JSON.stringify([...used], null, 2));
 }
 
-// Returns false if the deposit was already reserved (by this or an earlier request).
-async function reserveDeposit(txHash) {
-  return withDepositLock(async () => {
-    const used = await loadUsedDeposits();
+// Returns false if the settlement was already reserved (by this or an earlier request).
+async function reserveSettlement(txHash) {
+  return withSettlementLock(async () => {
+    const used = await loadUsedSettlements();
     const key = txHash.toLowerCase();
     if (used.has(key)) return false;
     used.add(key);
-    await saveUsedDeposits(used);
+    await saveUsedSettlements(used);
     return true;
   });
 }
 
 // Undoes a reservation when the payout it was guarding failed, so one failed
-// attempt doesn't permanently block a legitimate retry of the same deposit.
-async function releaseDeposit(txHash) {
-  return withDepositLock(async () => {
-    const used = await loadUsedDeposits();
+// attempt doesn't permanently block a legitimate retry of the same settlement.
+async function releaseSettlement(txHash) {
+  return withSettlementLock(async () => {
+    const used = await loadUsedSettlements();
     used.delete(txHash.toLowerCase());
-    await saveUsedDeposits(used);
+    await saveUsedSettlements(used);
   });
-}
-
-// ---- Deposit verification (real on-chain check, no mocking) --------------
-
-async function verifyDeposit({ depositTxHash, expectedAmountAtomic }) {
-  let receipt;
-  try {
-    receipt = await withRetry(() => publicClient.getTransactionReceipt({ hash: depositTxHash }), {
-      attempts: DEPOSIT_VERIFY_ATTEMPTS,
-      delayMs: DEPOSIT_VERIFY_RETRY_DELAY_MS,
-    });
-  } catch {
-    return { ok: false, reason: "deposit_tx_not_found" };
-  }
-
-  if (receipt.status !== "success") {
-    return { ok: false, reason: "deposit_tx_failed" };
-  }
-
-  const toTopic = pad(AVENOR_ADDRESS.toLowerCase(), { size: 32 }).toLowerCase();
-
-  const transferLog = receipt.logs.find(
-    (log) =>
-      log.address.toLowerCase() === TOKEN_ADDRESS.toLowerCase() &&
-      log.topics[0]?.toLowerCase() === TRANSFER_TOPIC.toLowerCase() &&
-      log.topics[2]?.toLowerCase() === toTopic,
-  );
-
-  if (!transferLog) {
-    return { ok: false, reason: "no_matching_transfer_to_avenor" };
-  }
-
-  const transferredAmount = BigInt(transferLog.data);
-  if (transferredAmount < BigInt(expectedAmountAtomic)) {
-    return { ok: false, reason: "deposit_amount_insufficient", transferredAmount: transferredAmount.toString() };
-  }
-
-  return { ok: true };
 }
 
 // ---- Payout execution (real on-chain send via the AVENOR Agentic Wallet) --
@@ -259,29 +204,54 @@ async function executePayout({ recipient, amount }) {
   return { ok: false, reason: "payout_failed", detail: first.json || first.raw };
 }
 
-// ---- x402 payment requirements (single source of truth for our one paid route) --
+// ---- x402 payment requirements ------------------------------------------
+// One payment covers both the relay amount and AVENOR's fee, so the
+// facilitator's settle() transfer to AVENOR_ADDRESS IS the proof of funds —
+// there is no separate out-of-band "deposit" step for the caller to do.
 
 const RESOURCE_URL_PATH = "/execute";
-const PAYMENT_REQUIREMENTS = {
-  scheme: "exact",
-  network: NETWORK,
-  asset: TOKEN_ADDRESS,
-  amount: FEE_AMOUNT_ATOMIC,
-  payTo: AVENOR_ADDRESS,
-  maxTimeoutSeconds: 300,
-  extra: TOKEN_EIP712,
-};
+const RESOURCE_DESCRIPTION =
+  "Execute a real on-chain stablecoin payment on your behalf. POST { recipient, amount } describing the payout you want. " +
+  `The exact price is your requested amount plus AVENOR's flat ${BASE_FEE_READABLE} USD₮0 fee, paid in a single x402 payment. ` +
+  "Once that payment settles, AVENOR relays `amount` to `recipient` and returns the payout transaction hash synchronously in the response.";
 
-function send402(res, extra = {}) {
+function buildPaymentRequirements(totalAtomic) {
+  return {
+    scheme: "exact",
+    network: NETWORK,
+    asset: TOKEN_ADDRESS,
+    amount: totalAtomic.toString(),
+    payTo: AVENOR_ADDRESS,
+    maxTimeoutSeconds: 300,
+    extra: TOKEN_EIP712,
+  };
+}
+
+function quoteTotalAtomic(amount) {
+  return toAtomicAmount(amount) + BigInt(BASE_FEE_ATOMIC);
+}
+
+// Validates the caller's intended relay request. Returns null (never throws)
+// so callers can still get a priced 402 challenge even when the body is
+// missing or malformed — an x402 discovery probe must never see 400/404.
+function parseRelayRequest(body) {
+  const { recipient, amount } = body || {};
+  if (!recipient || !/^0x[a-fA-F0-9]{40}$/.test(recipient)) return null;
+  const amountNum = Number(amount);
+  if (!amount || Number.isNaN(amountNum) || amountNum <= 0) return null;
+  return { recipient, amount: String(amount) };
+}
+
+function send402(res, { extra = {}, requirements, description } = {}) {
   const body = {
     x402Version: 2,
     error: "Payment required",
     resource: {
       url: RESOURCE_URL_PATH,
-      description: "Execute a real on-chain stablecoin payment on your behalf, given proof of your deposit to AVENOR.",
+      description: description || RESOURCE_DESCRIPTION,
       mimeType: "application/json",
     },
-    accepts: [PAYMENT_REQUIREMENTS],
+    accepts: [requirements || buildPaymentRequirements(BigInt(BASE_FEE_ATOMIC))],
   };
   res.status(402);
   res.setHeader("PAYMENT-REQUIRED", encodePaymentRequiredHeader(body));
@@ -309,13 +279,27 @@ app.get("/execute", (req, res) => {
 });
 
 app.post("/execute", async (req, res) => {
-  // ---- Step 1: the x402 challenge must be returned before any business input
-  // validation, so an unpaid or malformed request always gets 402 + accepts,
-  // never a 400/404 — payment must VERIFY and SETTLE for real before anything else runs ----
+  // ---- Step 1: price the request from the body (if present) and always
+  // return 402 + accepts for an unpaid or malformed request — never 400/404 —
+  // payment must VERIFY and SETTLE for real before anything else runs ----
+
+  const relay = parseRelayRequest(req.body);
+  const requirements = relay
+    ? buildPaymentRequirements(quoteTotalAtomic(relay.amount))
+    : buildPaymentRequirements(BigInt(BASE_FEE_ATOMIC));
 
   const signatureHeader = req.get("PAYMENT-SIGNATURE");
   if (!signatureHeader) {
-    return send402(res);
+    return send402(res, { requirements });
+  }
+  if (!relay) {
+    return send402(res, {
+      requirements,
+      extra: {
+        error: "missing_or_invalid_relay_request",
+        detail: "POST body must include a valid { recipient, amount } to compute the exact payment amount.",
+      },
+    });
   }
 
   let decodedPayment;
@@ -328,7 +312,7 @@ app.post("/execute", async (req, res) => {
   let verifyResult;
   try {
     verifyResult = await withTimeout(
-      facilitator.verify(decodedPayment, PAYMENT_REQUIREMENTS),
+      facilitator.verify(decodedPayment, requirements),
       FACILITATOR_TIMEOUT_MS,
       "facilitator_verify",
     );
@@ -336,13 +320,13 @@ app.post("/execute", async (req, res) => {
     return res.status(504).json({ ok: false, error: "facilitator_verify_timeout", detail: err.message });
   }
   if (!verifyResult.isValid) {
-    return send402(res, { error: "payment_verification_failed", detail: verifyResult.invalidReason });
+    return send402(res, { requirements, extra: { error: "payment_verification_failed", detail: verifyResult.invalidReason } });
   }
 
   let settleResult;
   try {
     settleResult = await withTimeout(
-      facilitator.settle(decodedPayment, PAYMENT_REQUIREMENTS),
+      facilitator.settle(decodedPayment, requirements),
       FACILITATOR_TIMEOUT_MS,
       "facilitator_settle",
     );
@@ -350,49 +334,29 @@ app.post("/execute", async (req, res) => {
     return res.status(504).json({ ok: false, error: "facilitator_settle_timeout", detail: err.message });
   }
   if (!settleResult.success) {
-    return send402(res, { error: "payment_settlement_failed", detail: settleResult.errorReason });
+    return send402(res, { requirements, extra: { error: "payment_settlement_failed", detail: settleResult.errorReason } });
   }
 
-  // ---- Step 2: fee payment is now genuinely confirmed on-chain — safe to validate and act ----
+  // ---- Step 2: the full relay+fee amount is now genuinely confirmed
+  // on-chain — settle() itself is the proof of funds, safe to relay ----
 
-  const { depositTxHash, recipient, amount } = req.body || {};
-
-  if (!depositTxHash || !/^0x[a-fA-F0-9]{64}$/.test(depositTxHash)) {
-    return res.status(400).json({ ok: false, error: "invalid_deposit_tx_hash", feeTxHash: settleResult.transaction });
-  }
-  if (!recipient || !/^0x[a-fA-F0-9]{40}$/.test(recipient)) {
-    return res.status(400).json({ ok: false, error: "invalid_recipient_address", feeTxHash: settleResult.transaction });
-  }
-  const amountNum = Number(amount);
-  if (!amount || Number.isNaN(amountNum) || amountNum <= 0) {
-    return res.status(400).json({ ok: false, error: "invalid_amount", feeTxHash: settleResult.transaction });
-  }
-
-  const expectedAmountAtomic = toAtomicAmount(amount).toString();
-
-  const verification = await verifyDeposit({ depositTxHash, expectedAmountAtomic });
-  if (!verification.ok) {
-    return res.status(402).json({ ok: false, error: verification.reason, detail: verification, feeTxHash: settleResult.transaction });
-  }
-
-  const reserved = await reserveDeposit(depositTxHash);
+  const reserved = await reserveSettlement(settleResult.transaction);
   if (!reserved) {
-    return res.status(402).json({ ok: false, error: "deposit_already_used", feeTxHash: settleResult.transaction });
+    return res.status(409).json({ ok: false, error: "settlement_already_processed", feeTxHash: settleResult.transaction });
   }
 
-  const payout = await executePayout({ recipient, amount });
+  const payout = await executePayout({ recipient: relay.recipient, amount: relay.amount });
   if (!payout.ok) {
-    await releaseDeposit(depositTxHash);
+    await releaseSettlement(settleResult.transaction);
     return res.status(500).json({ ok: false, error: payout.reason, detail: payout, feeTxHash: settleResult.transaction });
   }
 
   return res.json({
     ok: true,
     feeTxHash: settleResult.transaction,
-    depositTxHash,
     payoutTxHash: payout.txHash,
-    recipient,
-    amount,
+    recipient: relay.recipient,
+    amount: relay.amount,
     token: "USD₮0",
     network: "XLayer",
   });
