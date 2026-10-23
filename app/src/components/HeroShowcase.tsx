@@ -9,7 +9,9 @@ const SCENES = [
 /// A phone mockup (cycling through example claim screens, the way Stripe's hero cards
 /// cycle through example merchants) paired with a browser-window mockup of /s/:id behind
 /// it — Stripe's pattern of showing the actual product inside device frames, not just a
-/// floating card.
+/// floating card. Entirely illustrative: a made-up URL and made-up "live" badge here were
+/// confusing people into thinking it was real/connected data, so both are deliberately
+/// generic now and the whole thing is captioned "Example preview".
 export function HeroShowcase() {
   const [scene, setScene] = useState(0);
 
@@ -29,12 +31,12 @@ export function HeroShowcase() {
           <span className="browser-dot" />
           <span className="browser-dot" />
           <span className="browser-dot" />
-          <span className="browser-url">spliteline.vercel.app/s/0</span>
+          <span className="browser-url">yoursite.com/s/42</span>
         </div>
         <div className="browser-body">
           <div className="mock-top">
             <span className="mock-title">{current.name}</span>
-            <span className="mock-pill">live</span>
+            <span className="mock-pill">example</span>
           </div>
           <div className="mock-row">
             <div className="mock-avatar" />
@@ -64,6 +66,8 @@ export function HeroShowcase() {
           </button>
         </div>
       </div>
+
+      <span className="showcase-caption">Example preview — not real data</span>
     </div>
   );
 }

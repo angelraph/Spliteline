@@ -926,6 +926,15 @@ button, input, textarea, select {
   min-height: 420px;
 }
 
+.showcase-caption {
+  position: absolute;
+  left: 0;
+  bottom: -6px;
+  font-size: 0.72rem;
+  color: var(--text-faint);
+  z-index: 1;
+}
+
 .glow-blob {
   position: absolute;
   top: 20%;
