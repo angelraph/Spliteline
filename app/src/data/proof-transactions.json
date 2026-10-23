@@ -20,8 +20,13 @@
     "note": "Approve: 0x2616b9f8b99f05ac851afc55b04b483c4ef3f4053a78e6f12c74dc00a784d3e2"
   },
   {
-    "label": "Recipient claims their share",
-    "hash": "",
+    "label": "Release $1.23 to recipient (60%)",
+    "hash": "0x7bc6df4cf6143f808d162b8bbeb75188388c0cca4becd501c8ebc072455efbee",
+    "note": ""
+  },
+  {
+    "label": "Release $0.82 to recipient (40%)",
+    "hash": "0xdb9b178136eeab209accb89da15523d39feb4d7a08c12989cd6bb9c5c348bff2",
     "note": ""
   }
 ]
