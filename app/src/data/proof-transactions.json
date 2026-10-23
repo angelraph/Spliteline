@@ -5,13 +5,13 @@
     "note": "Contract: 0xdB329C9f13705A819436e1e041Fb0b94c75DB1D5"
   },
   {
-    "label": "Create the demo split (50/30/20)",
-    "hash": "",
+    "label": "Create split #0 (\"feast of payment\", 60/40)",
+    "hash": "0xcf642fedf228dc60b21a293d259c3e8b831588ebf4fb462bd54464dd98f39d5d",
     "note": ""
   },
   {
-    "label": "Pay into the split (real USDC)",
-    "hash": "",
+    "label": "Pay $2.000001 into split #0 (real USDC)",
+    "hash": "0x2225c2aa10fcf48c53722ecd761d95d965ac7ed0e086d4493055a0e2ff2ef1a1",
     "note": ""
   },
   {
