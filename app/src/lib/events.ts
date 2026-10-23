@@ -41,8 +41,9 @@ export async function getLogsChunked<const TAbiEvent extends AbiEvent>(
   return logs;
 }
 
-/// A reasonable lower bound for "scan from the start" on a brand-new chain/contract. Arc
-/// mainnet launched 2026-09-16 (see docs.arc.io "What's new"), so block 0 is always safe
-/// and the ranges involved are small enough that chunking alone is sufficient without
-/// tracking a precise deployment block per contract instance.
-export const GENESIS_BLOCK = 0n;
+/// The block to start event scans from. Arc mainnet is already tens of millions of blocks
+/// in by the time most contracts deploy on it (0.5s block time), so scanning from block 0
+/// would mean tens of thousands of chunked eth_getLogs calls on every page load. Set
+/// VITE_SPLITLINE_DEPLOY_BLOCK to the contract's actual deployment block once known;
+/// defaults to 0 for local chains (Anvil, etc.) where that's genuinely cheap.
+export const DEPLOY_BLOCK = BigInt((import.meta.env.VITE_SPLITLINE_DEPLOY_BLOCK as string) || 0);
