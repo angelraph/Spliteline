@@ -5,33 +5,59 @@ export function Landing() {
   return (
     <div className="landing">
       <section className="hero">
-        <div className="orb-field" aria-hidden="true">
-          <div className="orb orb-1" />
-          <div className="orb orb-2" />
-          <div className="orb orb-3" />
-        </div>
-        <div className="container hero-inner">
-          <span className="eyebrow">
-            <span className="dot" />
-            Built with Arc Studio · live on Arc
-          </span>
-          <h1>
-            Split revenue. <b className="gradient-text">Build together.</b>
-          </h1>
-          <p className="lead">
-            Splitline turns one payment link into a fair, instant, provable payout for a whole
-            team. Send USDC to one split — every recipient gets their exact share, claimable any
-            time, and nobody, not even the creator, can ever change the rules.
-          </p>
-          <div className="hero-actions">
-            <Link to="/create" className="btn btn-primary">
-              Create a split
-            </Link>
-            <Link to="/docs" className="btn btn-outline">
-              Read the docs
-            </Link>
+        <div className="mesh" aria-hidden="true" />
+        <div className="container hero-grid">
+          <div className="hero-inner">
+            <span className="eyebrow">
+              <span className="dot" />
+              Built with Arc Studio · live on Arc
+            </span>
+            <h1>
+              Split revenue. <b className="gradient-text">Build together.</b>
+            </h1>
+            <p className="lead">
+              Splitline turns one payment link into a fair, instant, provable payout for a whole
+              team. Send USDC to one split — every recipient gets their exact share, claimable
+              any time, and nobody, not even the creator, can ever change the rules.
+            </p>
+            <div className="hero-actions">
+              <Link to="/create" className="btn btn-primary">
+                Create a split
+              </Link>
+              <Link to="/docs" className="link-arrow">
+                Read the docs <span aria-hidden="true">→</span>
+              </Link>
+            </div>
+            <p className="hero-note">No owner. No admin. No fee. No upgrade path.</p>
           </div>
-          <p className="hero-note">No owner. No admin. No fee. No upgrade path.</p>
+
+          <div className="hero-visual" aria-hidden="true">
+            <div className="mock-card hero-mock">
+              <div className="mock-top">
+                <span className="mock-title">Core team revenue</span>
+                <span className="mock-pill">live</span>
+              </div>
+              <div className="mock-total">
+                <span>Total received</span>
+                $1,240.00
+              </div>
+              <div className="mock-row">
+                <div className="mock-avatar" />
+                <div className="mock-addr" style={{ maxWidth: "60%" }} />
+                <span className="mock-pct">50%</span>
+              </div>
+              <div className="mock-row">
+                <div className="mock-avatar" />
+                <div className="mock-addr" style={{ maxWidth: "45%" }} />
+                <span className="mock-pct">30%</span>
+              </div>
+              <div className="mock-row">
+                <div className="mock-avatar" />
+                <div className="mock-addr" style={{ maxWidth: "50%" }} />
+                <span className="mock-pct">20%</span>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -107,13 +133,34 @@ export function Landing() {
         <Reveal>
           <div className="bento">
             <div className="bento-card span-2">
-              <div className="bento-icon">🔒</div>
-              <h3>Locked splits</h3>
-              <p>
-                Recipients and shares are fixed forever at creation — no owner, no admin, no fee,
-                no upgrade function anywhere in the contract. Trust is the product, and it's
-                enforced by code, not a promise.
-              </p>
+              <div className="split-mock">
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="bento-icon">🔒</div>
+                  <h3>Locked splits</h3>
+                  <p>
+                    Recipients and shares are fixed forever at creation — no owner, no admin, no
+                    fee, no upgrade function anywhere in the contract. Trust is the product, and
+                    it's enforced by code, not a promise.
+                  </p>
+                </div>
+                <div className="split-mock-rows mock-card" style={{ padding: 16, maxWidth: 220 }}>
+                  <div className="mock-row">
+                    <div className="mock-avatar" />
+                    <div className="mock-addr" style={{ maxWidth: "55%" }} />
+                    <span className="mock-pct">50%</span>
+                  </div>
+                  <div className="mock-row">
+                    <div className="mock-avatar" />
+                    <div className="mock-addr" style={{ maxWidth: "40%" }} />
+                    <span className="mock-pct">30%</span>
+                  </div>
+                  <div className="mock-row">
+                    <div className="mock-avatar" />
+                    <div className="mock-addr" style={{ maxWidth: "48%" }} />
+                    <span className="mock-pct">20%</span>
+                  </div>
+                </div>
+              </div>
             </div>
             <div className="bento-card">
               <div className="bento-icon">↺</div>
@@ -127,6 +174,22 @@ export function Landing() {
                 Every split's page shows who gets what and a live payment feed — all read
                 straight from the chain, no database involved.
               </p>
+              <div className="bento-mock">
+                <div className="feed-mock-row paid">
+                  <span>
+                    <span className="dot" />
+                    Paid by 0x7a…3f1
+                  </span>
+                  <span className="feed-mock-amount">$50.00</span>
+                </div>
+                <div className="feed-mock-row claimed">
+                  <span>
+                    <span className="dot" />
+                    Claimed by 0x9c…b42
+                  </span>
+                  <span className="feed-mock-amount">$25.00</span>
+                </div>
+              </div>
             </div>
             <div className="bento-card">
               <div className="bento-icon">🤖</div>
