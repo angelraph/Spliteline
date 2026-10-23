@@ -265,6 +265,66 @@ button, input, textarea, select {
   gap: 8px;
 }
 
+.connect-wallet-picker {
+  position: relative;
+}
+
+.wallet-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 220px;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  padding: 6px;
+  z-index: 50;
+}
+
+.wallet-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+
+.wallet-menu-item:hover {
+  background: var(--surface-2);
+}
+
+.wallet-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.wallet-icon-fallback {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--gradient);
+  flex-shrink: 0;
+}
+
+.wallet-error {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 220px;
+  text-align: right;
+}
+
 .address-pill {
   font-family: ui-monospace, "SF Mono", monospace;
   background: var(--surface-2);
