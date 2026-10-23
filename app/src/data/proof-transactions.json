@@ -16,8 +16,8 @@
   },
   {
     "label": "agent-pays.ts: software-to-software payment",
-    "hash": "",
-    "note": ""
+    "hash": "0x86438c7d432a8ebbf69f0b341d78f36c8cb72d7192316a7d7f0e3ce03cbe3184",
+    "note": "Approve: 0x2616b9f8b99f05ac851afc55b04b483c4ef3f4053a78e6f12c74dc00a784d3e2"
   },
   {
     "label": "Recipient claims their share",
