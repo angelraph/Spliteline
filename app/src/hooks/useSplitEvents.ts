@@ -122,10 +122,23 @@ export function useSplitFeed(id: bigint | undefined) {
       setIsLoading(true);
       try {
         const toBlock = await client.getBlockNumber();
-        const [paidLogs, claimedLogs] = await Promise.all([
-          getLogsChunked(client, { address: SPLITLINE_ADDRESS, event: PAID_EVENT, fromBlock: DEPLOY_BLOCK, toBlock }),
-          getLogsChunked(client, { address: SPLITLINE_ADDRESS, event: CLAIMED_EVENT, fromBlock: DEPLOY_BLOCK, toBlock }),
-        ]);
+        // Sequential, not Promise.all: running both scans concurrently doubles the
+        // request rate against an RPC that's already rate-limit-sensitive (see
+        // lib/events.ts) for no real benefit — this is a one-time page load, not
+        // something latency-critical enough to need the parallelism.
+        const paidLogs = await getLogsChunked(client, {
+          address: SPLITLINE_ADDRESS,
+          event: PAID_EVENT,
+          fromBlock: DEPLOY_BLOCK,
+          toBlock,
+        });
+        if (cancelled) return;
+        const claimedLogs = await getLogsChunked(client, {
+          address: SPLITLINE_ADDRESS,
+          event: CLAIMED_EVENT,
+          fromBlock: DEPLOY_BLOCK,
+          toBlock,
+        });
         if (cancelled) return;
 
         const paid: PaymentEvent[] = paidLogs

@@ -21,7 +21,7 @@ export function SplitView() {
   const { address } = useAccount();
 
   const { split, isLoading, error, refetch } = useSplit(id);
-  const { events, isLoading: feedLoading, refetch: refetchFeed } = useSplitFeed(id);
+  const { events, isLoading: feedLoading, error: feedError, refetch: refetchFeed } = useSplitFeed(id);
   const { data: allowance, refetch: refetchAllowance } = useUsdcAllowance(address);
   const { approve, isPending: approving } = useApproveUsdc();
   const { pay, isPending: paying } = usePayIntoSplit();
@@ -169,7 +169,15 @@ export function SplitView() {
       <section className="live-feed">
         <h2>Live activity</h2>
         {feedLoading && <p>Loading activity…</p>}
-        {!feedLoading && events.length === 0 && <p className="empty-state">No activity yet.</p>}
+        {!feedLoading && feedError && (
+          <p className="form-error">
+            Couldn't load activity from the chain ({feedError.message.split("\n")[0]}).{" "}
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => refetchFeed()}>
+              Retry
+            </button>
+          </p>
+        )}
+        {!feedLoading && !feedError && events.length === 0 && <p className="empty-state">No activity yet.</p>}
         <ul>
           {events.map((e) => (
             <li key={e.transactionHash + e.kind} className={`feed-item feed-${e.kind}`}>

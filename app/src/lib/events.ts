@@ -2,12 +2,20 @@ import type { AbiEvent, Log, PublicClient } from "viem";
 
 // Arc's primary RPC is load-balanced across backends that can lag a few blocks behind
 // each other (see docs.arc.io/arc/references/rpc-endpoints — error -32014 means "haven't
-// imported that block yet"), and in general providers may not keep full history on their
-// default tier. Reading event history here always goes through a dedicated events client
-// (see src/chains/arc.ts) in small block ranges, with a short retry on transient errors,
-// rather than one unbounded getLogs call.
-const CHUNK_SIZE = 2_000n;
-const MAX_RETRIES = 3;
+// imported that block yet"), and it also rate-limits bursts of requests (HTTP 429) —
+// measured directly against Arc mainnet, firing ~30+ chunked eth_getLogs calls back to
+// back reliably triggers this. So chunks here are as large as the RPC accepts (5,000
+// blocks works; 10,000 is rejected with "requested range too large") and paced with a
+// small delay between requests rather than fired as fast as possible, with a longer
+// backoff on retry so a 429 actually has time to clear before the next attempt.
+const CHUNK_SIZE = 5_000n;
+const REQUEST_SPACING_MS = 120;
+const MAX_RETRIES = 4;
+
+function isRateLimited(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  return message.includes("429") || message.toLowerCase().includes("rate limit") || message.toLowerCase().includes("too many requests");
+}
 
 export async function getLogsChunked<const TAbiEvent extends AbiEvent>(
   client: PublicClient,
@@ -20,9 +28,13 @@ export async function getLogsChunked<const TAbiEvent extends AbiEvent>(
 ): Promise<Log[]> {
   const { address, event, fromBlock, toBlock } = params;
   const logs: Log[] = [];
+  let first = true;
 
   for (let start = fromBlock; start <= toBlock; start += CHUNK_SIZE) {
     const end = start + CHUNK_SIZE - 1n > toBlock ? toBlock : start + CHUNK_SIZE - 1n;
+
+    if (!first) await new Promise((resolve) => setTimeout(resolve, REQUEST_SPACING_MS));
+    first = false;
 
     let attempt = 0;
     for (;;) {
@@ -33,7 +45,8 @@ export async function getLogsChunked<const TAbiEvent extends AbiEvent>(
       } catch (err) {
         attempt += 1;
         if (attempt >= MAX_RETRIES) throw err;
-        await new Promise((resolve) => setTimeout(resolve, 300 * attempt));
+        const backoff = isRateLimited(err) ? 800 * attempt : 300 * attempt;
+        await new Promise((resolve) => setTimeout(resolve, backoff));
       }
     }
   }
