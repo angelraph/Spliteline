@@ -34,9 +34,13 @@ export const arcTestnet = defineChain({
   testnet: true,
 });
 
-// A full-history RPC for chunked getLogs scans (src/lib/events.ts) — Arc's primary
-// load-balanced RPC can prune/lag on older blocks. dRPC publishes Arc mainnet and
-// testnet endpoints; swap these for your own provider/API key if you need higher
-// reliability than the public tier offers.
-export const ARC_MAINNET_EVENTS_RPC = "https://rpc.drpc.mainnet.arc.io";
-export const ARC_TESTNET_EVENTS_RPC = "https://rpc.drpc.testnet.arc.io";
+// The RPC used for chunked getLogs scans (src/lib/events.ts). Measured directly against
+// Arc mainnet (2026-10-23): dRPC's free tier rejects eth_getLogs ranges wider than ~150
+// blocks regardless of how recent they are ("ranges over 10000 blocks are not supported
+// on free plan" is misleading — 500 blocks already fails), which makes it impractical for
+// scanning tens of thousands of blocks of history. Arc's own primary RPC comfortably
+// handles 2000+ block ranges, so it's used here too; the load-balancer lag it can show
+// (docs.arc.io: error -32014) is handled by the retry in getLogsChunked. Swap these for
+// your own provider/API key if you need something with a real history-retention SLA.
+export const ARC_MAINNET_EVENTS_RPC = "https://rpc.mainnet.arc.io";
+export const ARC_TESTNET_EVENTS_RPC = "https://rpc.testnet.arc.io";
