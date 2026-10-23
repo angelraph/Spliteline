@@ -1,4 +1,7 @@
-# Splitline
+# Spliteline
+
+**Live app:** [spliteline.vercel.app](https://spliteline.vercel.app) · **Repo:**
+[github.com/angelraph/Spliteline](https://github.com/angelraph/Spliteline)
 
 Immutable, pull-based USDC revenue splits on [Arc](https://docs.arc.io). Create a split once —
 up to 20 recipients, each with a fixed percentage — and it can never be changed afterward: no
@@ -8,6 +11,12 @@ address they control. Anyone can also push a payout to a recipient directly. One
 or unresponsive recipient can never block another recipient's claim.
 
 Built for DoraHacks' [Arc Microgrants: Built with Arc Studio](https://dorahacks.io/hackathon/arc-microgrants-2/detail).
+
+> The repo, live app, and Vercel project are named **Spliteline**; the Solidity contract and
+> in-app product name are **Splitline** (one word, no second "e") — the name used throughout
+> the code, UI copy, and the original project brief. Say the word if you'd rather the contract
+> and UI text matched the repo spelling exactly; it's a mechanical rename across a handful of
+> files.
 
 ## Why
 
@@ -168,7 +177,10 @@ in order, using small amounts and fresh wallets:
 7. **Claim** from each recipient wallet via `/claim`.
 8. **Record every transaction hash** in `app/src/data/proof-transactions.json` — this is what
    powers the `/proof` page. Be honest in the README/video about which wallets are yours.
-9. **Deploy the frontend** (Vercel/Netlify/Cloudflare Pages) under your own account.
+9. **Deploy the frontend** — already live at [spliteline.vercel.app](https://spliteline.vercel.app),
+   connected to this repo's `main` branch for auto-deploys. Once you have a deployed contract
+   address, set `VITE_SPLITLINE_ADDRESS` as an environment variable on the Vercel project
+   (`vercel env add VITE_SPLITLINE_ADDRESS production`) and redeploy.
 10. **Submit**: Arc Studio project URL, live app link, contract address + one explorer.arc.io
     transaction link, this repo's URL, a video walkthrough, a short description, and a public
     builder profile (GitHub/X/Farcaster).
