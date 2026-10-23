@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { parseAbiItem } from "viem";
 import { useEventsClient } from "./useEventsClient";
 import { getLogsChunked, DEPLOY_BLOCK } from "../lib/events";
@@ -29,6 +29,8 @@ export function useAllSplits() {
   const [splits, setSplits] = useState<SplitSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [refreshIndex, setRefreshIndex] = useState(0);
+  const refetch = useCallback(() => setRefreshIndex((n) => n + 1), []);
 
   useEffect(() => {
     if (!SPLITLINE_ADDRESS) {
@@ -64,18 +66,18 @@ export function useAllSplits() {
     return () => {
       cancelled = true;
     };
-  }, [client]);
+  }, [client, refreshIndex]);
 
-  return { splits, isLoading, error };
+  return { splits, isLoading, error, refetch };
 }
 
 /// Splits where `address` appears in the recipient list.
 export function useSplitsForRecipient(address: `0x${string}` | undefined) {
-  const { splits, isLoading, error } = useAllSplits();
+  const { splits, isLoading, error, refetch } = useAllSplits();
   const filtered = address
     ? splits.filter((s) => s.recipients.some((r) => r.toLowerCase() === address.toLowerCase()))
     : [];
-  return { splits: filtered, isLoading, error };
+  return { splits: filtered, isLoading, error, refetch };
 }
 
 export type PaymentEvent = {
@@ -97,12 +99,17 @@ export type ClaimEvent = {
 };
 
 /// The live payment + claim feed for one split, shown on /s/:id, read purely from chain
-/// events (Splitline keeps no off-chain database).
+/// events (Splitline keeps no off-chain database). Exposes `refetch` because, unlike the
+/// split's own totals (read fresh via useSplit), this event scan only ever runs once on
+/// mount/id-change otherwise — a payment made from this same page wouldn't show up here
+/// until the page was reloaded.
 export function useSplitFeed(id: bigint | undefined) {
   const client = useEventsClient();
   const [events, setEvents] = useState<(PaymentEvent | ClaimEvent)[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [refreshIndex, setRefreshIndex] = useState(0);
+  const refetch = useCallback(() => setRefreshIndex((n) => n + 1), []);
 
   useEffect(() => {
     if (id === undefined || !SPLITLINE_ADDRESS) {
@@ -156,7 +163,7 @@ export function useSplitFeed(id: bigint | undefined) {
     return () => {
       cancelled = true;
     };
-  }, [client, id]);
+  }, [client, id, refreshIndex]);
 
-  return { events, isLoading, error };
+  return { events, isLoading, error, refetch };
 }

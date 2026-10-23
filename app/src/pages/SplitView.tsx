@@ -21,7 +21,7 @@ export function SplitView() {
   const { address } = useAccount();
 
   const { split, isLoading, error, refetch } = useSplit(id);
-  const { events, isLoading: feedLoading } = useSplitFeed(id);
+  const { events, isLoading: feedLoading, refetch: refetchFeed } = useSplitFeed(id);
   const { data: allowance, refetch: refetchAllowance } = useUsdcAllowance(address);
   const { approve, isPending: approving } = useApproveUsdc();
   const { pay, isPending: paying } = usePayIntoSplit();
@@ -61,7 +61,7 @@ export function SplitView() {
       await pay(id, amountBase, refToBytes32(ref));
       setAmount("");
       setRef("");
-      await Promise.all([refetch(), refetchAllowance()]);
+      await Promise.all([refetch(), refetchAllowance(), refetchFeed()]);
     } catch (err) {
       setFormError(getFriendlyErrorMessage(err));
     }
