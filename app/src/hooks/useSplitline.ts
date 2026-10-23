@@ -131,3 +131,22 @@ export function useClaim() {
 
   return { claim, claimTo, isPending, error, connectedAddress: address };
 }
+
+/// release(id, recipient) can be called by anyone — it's the push counterpart to claim,
+/// always paying the recipient's own fixed address. Lets whoever is already connected pay
+/// out every recipient without each of them having to connect their own wallet.
+export function useRelease() {
+  const { writeContractAsync, isPending, error } = useWriteContract();
+
+  async function release(id: bigint, recipient: `0x${string}`) {
+    if (!SPLITLINE_ADDRESS) throw new Error("Splitline contract address is not configured");
+    return writeContractAsync({
+      address: SPLITLINE_ADDRESS,
+      abi: SPLITLINE_ABI,
+      functionName: "release",
+      args: [id, recipient],
+    });
+  }
+
+  return { release, isPending, error };
+}

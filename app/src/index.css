@@ -550,11 +550,31 @@ button, input, textarea, select {
 
 .recipient-line {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  padding: 8px 0;
+  gap: 12px;
+  padding: 10px 0;
   font-family: ui-monospace, "SF Mono", monospace;
   font-size: 0.85rem;
   border-bottom: 1px solid var(--border-soft);
+  flex-wrap: wrap;
+}
+
+.recipient-line .addr {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recipient-line .owed-amount {
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.recipient-line .release-error {
+  flex-basis: 100%;
+  font-family: inherit;
 }
 
 .recipient-line:last-child {

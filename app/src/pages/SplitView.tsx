@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
 import { stringToHex, pad, zeroHash } from "viem";
 import { useAccount } from "wagmi";
-import { useSplit, useUsdcAllowance, useApproveUsdc, usePayIntoSplit } from "../hooks/useSplitline";
+import { useSplit, useUsdcAllowance, useApproveUsdc, usePayIntoSplit, useOwed, useRelease } from "../hooks/useSplitline";
 import { useSplitFeed } from "../hooks/useSplitEvents";
 import { formatUsdc, parseUsdc } from "../lib/usdc";
 import { getFriendlyErrorMessage } from "../lib/errors";
@@ -13,6 +13,51 @@ function refToBytes32(ref: string): `0x${string}` {
   if (!ref) return zeroHash;
   const hex = stringToHex(ref.slice(0, 31));
   return pad(hex, { size: 32 });
+}
+
+/// One recipient row with a "Release" button — anyone connected (not just the recipient)
+/// can push that recipient's owed share to their fixed address via the contract's
+/// release(id, recipient). Lets whoever created/funded the split pay everyone out without
+/// each recipient having to connect their own wallet.
+function RecipientRow({
+  id,
+  recipient,
+  bps,
+  onReleased,
+}: {
+  id: bigint;
+  recipient: `0x${string}`;
+  bps: number;
+  onReleased: () => void;
+}) {
+  const { data: owed, refetch: refetchOwed } = useOwed(id, recipient);
+  const { release, isPending } = useRelease();
+  const [error, setError] = useState<string | null>(null);
+
+  const hasOwed = owed !== undefined && owed > 0n;
+
+  async function onRelease() {
+    setError(null);
+    try {
+      await release(id, recipient);
+      await refetchOwed();
+      onReleased();
+    } catch (err) {
+      setError(getFriendlyErrorMessage(err));
+    }
+  }
+
+  return (
+    <div className="recipient-line">
+      <span className="addr">{recipient}</span>
+      <span className="share">{(bps / 100).toFixed(2)}%</span>
+      {owed !== undefined && <span className="owed-amount">${formatUsdc(owed)} owed</span>}
+      <button type="button" className="btn btn-ghost btn-sm" onClick={onRelease} disabled={!hasOwed || isPending}>
+        {isPending ? "Sending…" : hasOwed ? "Release" : "Paid out"}
+      </button>
+      {error && <p className="form-error release-error">{error}</p>}
+    </div>
+  );
 }
 
 export function SplitView() {
@@ -99,10 +144,16 @@ export function SplitView() {
       <section className="recipients-table">
         <h2>Recipients</h2>
         {split.recipients.map((r, i) => (
-          <div className="recipient-line" key={r}>
-            <span className="addr">{r}</span>
-            <span className="share">{(split.bps[i] / 100).toFixed(2)}%</span>
-          </div>
+          <RecipientRow
+            key={r}
+            id={id}
+            recipient={r}
+            bps={split.bps[i]}
+            onReleased={() => {
+              refetch();
+              refetchFeed();
+            }}
+          />
         ))}
       </section>
 
