@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { parseAbiItem } from "viem";
 import { useEventsClient } from "./useEventsClient";
-import { getLogsChunked, GENESIS_BLOCK } from "../lib/events";
+import { getLogsChunked, DEPLOY_BLOCK } from "../lib/events";
 import { SPLITLINE_ADDRESS } from "../abi/splitline";
 
 const SPLIT_CREATED_EVENT = parseAbiItem(
@@ -44,7 +44,7 @@ export function useAllSplits() {
         const logs = await getLogsChunked(client, {
           address: SPLITLINE_ADDRESS,
           event: SPLIT_CREATED_EVENT,
-          fromBlock: GENESIS_BLOCK,
+          fromBlock: DEPLOY_BLOCK,
           toBlock,
         });
         if (cancelled) return;
@@ -116,8 +116,8 @@ export function useSplitFeed(id: bigint | undefined) {
       try {
         const toBlock = await client.getBlockNumber();
         const [paidLogs, claimedLogs] = await Promise.all([
-          getLogsChunked(client, { address: SPLITLINE_ADDRESS, event: PAID_EVENT, fromBlock: GENESIS_BLOCK, toBlock }),
-          getLogsChunked(client, { address: SPLITLINE_ADDRESS, event: CLAIMED_EVENT, fromBlock: GENESIS_BLOCK, toBlock }),
+          getLogsChunked(client, { address: SPLITLINE_ADDRESS, event: PAID_EVENT, fromBlock: DEPLOY_BLOCK, toBlock }),
+          getLogsChunked(client, { address: SPLITLINE_ADDRESS, event: CLAIMED_EVENT, fromBlock: DEPLOY_BLOCK, toBlock }),
         ]);
         if (cancelled) return;
 

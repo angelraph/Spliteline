@@ -108,19 +108,30 @@ export function SplitView() {
 
       <section className="pay-panel">
         <h2>Pay into this split</h2>
-        <form onSubmit={onPay} className="pay-form">
-          <label className="field">
-            <span>Amount (USDC)</span>
-            <input
-              type="number"
-              min="0"
-              step="0.000001"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="0.00"
-            />
-          </label>
-          <label className="field">
+        <form onSubmit={onPay} className="mock-card swap-card">
+          <div className="swap-row">
+            <div className="swap-row-head">
+              <span>You're paying</span>
+            </div>
+            <div className="swap-row-body">
+              <input
+                type="number"
+                min="0"
+                step="0.000001"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="0"
+                className="swap-amount-input"
+                inputMode="decimal"
+              />
+              <span className="token-pill">
+                <span className="token-icon">$</span>
+                USDC
+              </span>
+            </div>
+          </div>
+
+          <label className="field ref-field">
             <span>Reference (optional)</span>
             <input
               type="text"
@@ -134,11 +145,15 @@ export function SplitView() {
           {formError && <p className="form-error">{formError}</p>}
 
           {needsApproval ? (
-            <button type="button" className="btn btn-primary" onClick={onApprove} disabled={approving}>
+            <button type="button" className="btn btn-primary btn-lg" onClick={onApprove} disabled={approving}>
               {approving ? "Approving…" : "1. Approve USDC"}
             </button>
           ) : (
-            <button type="submit" className="btn btn-primary" disabled={paying || !amountBase || amountBase <= 0n}>
+            <button
+              type="submit"
+              className="btn btn-primary btn-lg"
+              disabled={paying || !amountBase || amountBase <= 0n}
+            >
               {paying ? "Paying…" : "2. Pay"}
             </button>
           )}

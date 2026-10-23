@@ -1,8 +1,8 @@
 [
   {
     "label": "Deploy Splitline to Arc mainnet",
-    "hash": "",
-    "note": "Fill in after running the deploy script or deploying via Arc Studio. See README.md § Deployment & proof runbook."
+    "hash": "0x3cc168cf65d8ce76c025bdb27e18a64c834efea0917c1163ae60fdb1351ab460",
+    "note": "Contract: 0xdB329C9f13705A819436e1e041Fb0b94c75DB1D5"
   },
   {
     "label": "Create the demo split (50/30/20)",
