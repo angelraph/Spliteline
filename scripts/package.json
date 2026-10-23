@@ -1,0 +1,18 @@
+{
+  "name": "splitline-scripts",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "agent-pays": "tsx agent-pays.ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "viem": "^2.57.10"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  }
+}

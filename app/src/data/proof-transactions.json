@@ -1,0 +1,27 @@
+[
+  {
+    "label": "Deploy Splitline to Arc mainnet",
+    "hash": "",
+    "note": "Fill in after running the deploy script or deploying via Arc Studio. See README.md § Deployment & proof runbook."
+  },
+  {
+    "label": "Create the demo split (50/30/20)",
+    "hash": "",
+    "note": ""
+  },
+  {
+    "label": "Pay into the split (real USDC)",
+    "hash": "",
+    "note": ""
+  },
+  {
+    "label": "agent-pays.ts: software-to-software payment",
+    "hash": "",
+    "note": ""
+  },
+  {
+    "label": "Recipient claims their share",
+    "hash": "",
+    "note": ""
+  }
+]
