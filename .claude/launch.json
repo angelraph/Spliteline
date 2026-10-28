@@ -6,6 +6,18 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "app", "run", "dev", "--", "--port", "5183"],
       "port": 5183
+    },
+    {
+      "name": "spliteline-v2",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "cd v2 && node node_modules/vite/bin/vite.js --port 5184 --strictPort"],
+      "port": 5184
+    },
+    {
+      "name": "spliteline-v2-prod",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "cd v2 && node node_modules/vite/bin/vite.js preview --port 5185 --strictPort"],
+      "port": 5185
     }
   ]
 }

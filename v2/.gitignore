@@ -1,0 +1,13 @@
+node_modules/
+contracts/out/
+contracts/cache/
+broadcast/
+.env
+.env.*
+keys.env
+*.key
+console.jsonl
+traces.jsonl
+dist/
+!.env.example
+!.env.production
