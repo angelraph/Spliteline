@@ -6,6 +6,10 @@
       {
         "label": "Deploy Spliteline v2 to Arc mainnet",
         "hash": "0xc77b8a16ca7d1d2169da8875ed18060d5382e5ebd7d247f7f1e300167e009e39"
+      },
+      {
+        "label": "Create split #1 \"payment for alert subscription\" (50/50, deposit address 0x405de8\u2026Ae7b)",
+        "hash": "0x119ed1d55b0798c1065420edfbf9168ad96668e2872862e56da923de163e5869"
       }
     ]
   },
