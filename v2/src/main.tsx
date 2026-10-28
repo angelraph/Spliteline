@@ -80,6 +80,9 @@ createRoot(document.getElementById('root')!).render(
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
         <ConnectKitProvider
+          // Don't switch the wallet's network on connect (ConnectKit defaults to the first
+          // configured chain). The app asks to switch only when a transaction needs it.
+          options={{ initialChainId: 0 }}
           theme="midnight"
           customTheme={{
             '--ck-font-family': "'DM Sans', sans-serif",
