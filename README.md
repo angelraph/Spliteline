@@ -1,192 +1,106 @@
 # Spliteline
 
-**Live app:** [spliteline.vercel.app](https://spliteline.vercel.app) · **Repo:**
+**Live app:** [spliteline.xyz](https://spliteline.xyz) · **Arc Studio project:**
+[Spliteline v2](https://studio.arc.io/app/a27d937d-b07d-4e2c-9f4c-4a4d3ee574d0) · **Repo:**
 [github.com/angelraph/Spliteline](https://github.com/angelraph/Spliteline)
 
-Immutable, pull-based USDC revenue splits on [Arc](https://docs.arc.io). Create a split once —
-up to 20 recipients, each with a fixed percentage — and it can never be changed afterward: no
-owner, no admin, no fee, no upgrade path. Anyone can pay USDC into a split by its id. Each
-recipient can claim their exact proportional share at any time, or redirect it to another
-address they control. Anyone can also push a payout to a recipient directly. One blocklisted
-or unresponsive recipient can never block another recipient's claim.
+**Split revenue. Build together.** Spliteline is immutable, pull-based USDC revenue splitting
+on [Arc](https://docs.arc.io). Create a split once — up to 20 recipients, fixed percentages —
+and it can never be changed: no owner, no admin, no fee, no upgrade path.
 
 Built for DoraHacks' [Arc Microgrants: Built with Arc Studio](https://dorahacks.io/hackathon/arc-microgrants-2/detail).
 
-> The repo, live app, and Vercel project are named **Spliteline**; the Solidity contract and
-> in-app product name are **Splitline** (one word, no second "e") — the name used throughout
-> the code, UI copy, and the original project brief. Say the word if you'd rather the contract
-> and UI text matched the repo spelling exactly; it's a mechanical rename across a handful of
-> files.
+## What makes v2 different
 
-## Why
+- **Every split has its own deposit address.** A plain USDC transfer from any wallet,
+  exchange, payroll tool or AI agent counts — no integration, no special function call.
+  Each address is a deterministic EIP-1167 clone that can only forward to Spliteline.
+- **Claims sweep automatically.** USDC waiting at a deposit address is picked up by the next
+  `claim`, `claimTo` or `release`, so recipients never need a separate step.
+- **One-transaction payments.** `payWithPermit` uses Arc USDC's EIP-2612 permit (verified on
+  Arc Testnet), so payers sign once instead of approve-then-pay. The app falls back to
+  approve + pay if a wallet can't sign.
+- **Splits can feed other splits.** A recipient can be another split's deposit address, so
+  revenue flows down a chain (label → band → members) without trapping funds.
+- **Pull-based and failure-isolated.** Each recipient's payout is independent; one blocklisted
+  or broken recipient can never block anyone else. A blocklisted recipient can still redirect
+  their share with `claimTo`.
+- **Payment links and an embeddable pay widget.** `/s/:id?amount=5&ref=invoice-42` pre-fills
+  the pay card; `/embed/:id` drops into any site as an iframe.
 
-Most revenue-split demos stop at "it compiles." Splitline is the complete, trustworthy
-version: the split configuration is genuinely immutable (verified by a Foundry invariant
-suite, not just asserted in prose), payouts are pull-based so no single bad actor can freeze
-anyone else's money, and the whole app — including a live payment feed and a recipient's
-claim dashboard — reads straight from on-chain events, because Splitline keeps no database
-of its own.
+## How it was built with Arc Studio
 
-## Structure
+Spliteline v2 was built in the Arc Studio project linked above, from the first contract
+prompt:
+
+1. **Contract and tests.** Studio wrote `Splitline.sol` and `DepositAddress.sol` from a written
+   spec, checked on Arc Testnet that USDC supports permit, and wrote 164 tests plus 4
+   invariants (unit, fuzz, nested, blocklist, front-running and salt tests). Its own security
+   review caught and fixed a real issue in its first version: a deposit-address salt that a
+   front-runner could shift.
+2. **Auto-sweep.** Added after review; Studio re-ran the full suite and a second security pass.
+3. **Testnet end-to-end.** Studio deployed to Arc Testnet and ran 19 transactions covering
+   every flow, checking every balance onchain — see [`v2/TESTNET.md`](v2/TESTNET.md).
+4. **App.** Studio built the web app, then tested it in a headless browser against testnet
+   (14 more transactions), fixed the bugs it found, and audited every page at 375px and
+   1280px for overflow and console errors.
+5. **Brand.** Studio matched the existing Spliteline brand and site structure, added Docs,
+   FAQ and Proof pages, and wired in Arc mainnet.
+
+Code was exported from Studio with its *Download Code* button and committed under `v2/`.
+Everything outside `v2/` is v1, the earlier prototype (see below).
+
+## Repository layout
 
 ```
-contracts/   Foundry project — Splitline.sol, unit/fuzz/invariant tests, deploy script
-app/         Vite + React + TypeScript + wagmi/viem frontend (/, /s/:id, /claim, /proof)
-scripts/     agent-pays.ts — a "software pays software" demo
+v2/                  Spliteline v2 — the Arc Studio project
+  contracts/         Splitline.sol, DepositAddress.sol, tests (forge test)
+  src/               React + Vite + wagmi/viem app
+  public/            Brand assets (mark, wordmark, icons, OG image)
+  scripts/           Arc Studio deploy helpers
+  TESTNET.md         Testnet end-to-end transaction log
+contracts/, app/, scripts/   v1 prototype
 ```
 
-## Contract
-
-[`contracts/src/Splitline.sol`](contracts/src/Splitline.sol) — see the file's NatSpec for the
-full function and event surface. Highlights:
-
-- Uses only Arc's ERC-20 USDC interface at the fixed address
-  `0x3600000000000000000000000000000000000000` (6 decimals) — never native value. Arc's
-  native USDC balance (18 decimals, used for gas) is a different interface over the same
-  underlying balance; this contract never touches it. See
-  [docs.arc.io's stablecoin native model](https://docs.arc.io/arc/concepts/stablecoin-native-model).
-- `createSplit`, `pay`, `owed`, `claim`, `claimTo`, `release`, `getSplit` — exactly the
-  surface described in the project brief, plus `SplitCreated`/`Paid`/`Claimed` events that
-  the frontend uses as its entire data layer.
-- `SafeERC20` + `ReentrancyGuard` (OpenZeppelin v5), custom errors, checks-effects-interactions
-  throughout.
-- A few deliberate, documented design calls where the brief was open-ended: the USDC address
-  is a hardcoded constant (it's fixed network-wide on Arc, so making it configurable would
-  only add a one-shot footgun to an otherwise admin-less contract); `pay(id, 0, ref)` reverts
-  rather than silently no-opping; `ref` is `bytes32` rather than a free-text `string`, since
-  it's cheaper on every payer's gas bill and still enough for an invoice id or its hash;
-  "self-referential recipient" is rejected as "recipient == the Splitline contract's own
-  address" — the one interpretation that actually prevents a fund trap.
-
-### Tests
+## Run it
 
 ```bash
-cd contracts
-forge test          # 26 unit tests, 3 fuzz tests (1024 runs each), 2 invariant checks
-forge test -vvv      # with traces
+cd v2
+bun install
+cp .env.example .env
+bun run dev              # app
+forge test               # contracts: 164 tests + 4 invariants
+bun run build            # production build
 ```
 
-All 30 tests pass, including a fuzz test that bps must sum to exactly 10000, a fuzz test that
-claimed can never exceed received, a fuzz test that rounding dust stays below the recipient
-count, and an invariant campaign (16k+ randomized calls across many splits) asserting the
-contract's USDC balance always equals total paid minus total claimed, and no recipient is
-ever owed more than their exact proportional share. A dedicated test also proves one
-blocklisted recipient never blocks another recipient's claim, using a mock token that reverts
-transfers to a chosen address, standing in for Arc USDC's real blocklist behavior.
+Environment variables (all public, no secrets): `VITE_SPLITLINE_ADDRESS_TESTNET`,
+`VITE_SPLITLINE_DEPLOY_BLOCK_TESTNET`, `VITE_SPLITLINE_ADDRESS_MAINNET`,
+`VITE_SPLITLINE_DEPLOY_BLOCK_MAINNET`, `VITE_PUBLIC_URL`. While the mainnet address is empty,
+mainnet views show "Coming soon on mainnet".
 
-## App
+## Deployments
 
-```bash
-cd app
-npm install
-cp .env.example .env   # fill in VITE_SPLITLINE_ADDRESS after deploying
-npm run dev
-```
+| Network | Contract | Status |
+|---|---|---|
+| Arc Testnet | `0x8dc07d75917bfaed1b7cc389fccc98ffc23bd13f` | Live, 33 end-to-end transactions |
+| Arc mainnet (v2) | — | Pending deploy |
+| Arc mainnet (v1) | [`0xdB329C9f13705A819436e1e041Fb0b94c75DB1D5`](https://explorer.arc.io/address/0xdB329C9f13705A819436e1e041Fb0b94c75DB1D5) | Live, 6 transactions |
 
-Four routes, all reading live from the contract and its events — no backend:
+## v1 prototype
 
-- `/` — create a split, with a live basis-points meter
-- `/s/:id` — pay into a split (approve → pay, shown as two explicit steps), see recipients,
-  a live payment/claim feed, and a QR code for the link
-- `/claim` — every split the connected wallet is a recipient of, with a claim button
-- `/proof` — the project's mainnet transaction journey, filled in after deployment (see below)
-
-Built with **wagmi + viem**, not ethers — Arc's dual-decimal USDC model (18-decimal native,
-6-decimal ERC-20) needs explicit, auditable decimal handling at every read, which viem's
-`formatUnits`/`parseUnits` make obvious at each call site. The app deliberately shows a
-**single** USDC balance (the ERC-20 interface only), per Arc's own guidance against splitting
-native/ERC-20 balances into two rows. Wallet connection is a minimal custom button over
-wagmi's injected connector rather than RainbowKit/ConnectKit, since Arc is too new to be in
-their default chain metadata.
-
-## Agent script
-
-```bash
-cd scripts
-npm install
-cp .env.example .env   # PRIVATE_KEY (the service's own wallet), SPLITLINE_ADDRESS, SPLIT_ID
-npm run agent-pays -- --amount 0.05 --ref "invoice-1234"
-```
-
-Plays an autonomous API service that has just collected revenue from a customer and forwards
-it straight into a split, with no human in the loop — the "software-to-software payments"
-starting point from the Arc Microgrants brief. Verified end-to-end against a local Anvil
-chain (deploy → create a 50/30/20 split → `agent-pays.ts` approves and pays → a recipient
-claims their exact share) before this README was written.
-
-## How this was built with Arc Studio
-
-The contracts, tests, and app in this repo are a complete, independently-tested reference
-implementation — every test above runs and passes locally. Arc's own eligibility rules say a
-submission must be *built in Arc Studio*, so the actual submitted build goes through
-[studio.arc.io](https://studio.arc.io) using this repo (pushed to GitHub, connected via
-Studio's GitHub import) as the steer:
-
-1. **Contract.** Paste into Arc Studio:
-   > Write a Solidity 0.8 contract called Splitline. Immutable USDC revenue splits using only
-   > the ERC-20 USDC interface at 0x3600000000000000000000000000000000000000 (6 decimals). No
-   > owner, no admin, no fee, not payable. createSplit(name, recipients[], bps[]) with max 20
-   > recipients, bps sum 10000, no zero address, no duplicates, no self. pay(id, amount, ref)
-   > uses transferFrom and adds to totalReceived. Cumulative accounting: owed =
-   > totalReceived\*bps/10000 - released. claim, claimTo, release(id, recipient), getSplit.
-   > Events SplitCreated, Paid, Claimed. Use SafeERC20 and a reentrancy guard. `ref` is
-   > bytes32. The USDC address is a hardcoded constant, not a constructor parameter. Reject a
-   > recipient equal to the contract's own address.
-2. **Tests.** "Write Foundry tests including fuzz tests for these invariants: claimed plus
-   owed never exceeds received; dust below recipient count; balance equals received minus
-   claimed; one reverting recipient never blocks others; rejects zero address, duplicates, bad
-   bps sum, more than 20 recipients, zero amount."
-3. **Review.** "Review the contract for reentrancy, rounding, and denial of service. List
-   findings and fix them."
-4. **App.** "Build a React app for this contract with pages /, /s/:id, /claim, /proof as
-   specified. Read data from contract views and events in small block ranges. Show a single
-   USDC balance. Handle wrong network, approval then pay steps, errors, empty states, and
-   mobile."
-5. **Agent script.** "Add scripts/agent-pays.ts that pays a split from a script wallet with a
-   reference string."
-
-If Studio's own output ever diverges from this repo, this repo is the tie-breaker — it's
-already proven correct by the test suite above.
-
-## Deployment & proof runbook
-
-Everything up to here is code. **Nothing past this point can be done by an AI assistant** —
-deploying to mainnet, funding a wallet, and signing transactions are all steps only a human
-with their own Arc Studio account and their own wallet can take. This is the exact sequence,
-in order, using small amounts and fresh wallets:
-
-1. **Fund a deploy wallet** with a small amount of mainnet USDC (Arc's native gas token).
-   Never reuse a key that holds anything else of value.
-2. **Deploy**, preferably through Arc Studio directly (one-click deploy to Arc mainnet from
-   your logged-in session — this is what produces the "Arc Studio project URL" the submission
-   needs). Alternatively:
-   ```bash
-   cd contracts
-   cp .env.example .env   # PRIVATE_KEY = your deploy wallet's key
-   forge script script/Deploy.s.sol --rpc-url arc_testnet --broadcast   # testnet first, always
-   forge script script/Deploy.s.sol --rpc-url arc_mainnet --broadcast  # only once confident
-   ```
-3. **Record the contract address** — put it in `app/.env` (`VITE_SPLITLINE_ADDRESS`) and
-   `scripts/.env` (`SPLITLINE_ADDRESS`).
-4. **Create the demo split** — a 50/30/20 split among three wallets you control, via the app's
-   `/` page or Arc Studio's contract panel.
-5. **Pay a small amount** (e.g. $0.10) into it from a second wallet, via the app's `/s/:id`
-   page.
-6. **Run `agent-pays.ts`** with a real funded key to generate the software-to-software proof
-   transaction.
-7. **Claim** from each recipient wallet via `/claim`.
-8. **Record every transaction hash** in `app/src/data/proof-transactions.json` — this is what
-   powers the `/proof` page. Be honest in the README/video about which wallets are yours.
-9. **Deploy the frontend** — already live at [spliteline.vercel.app](https://spliteline.vercel.app),
-   connected to this repo's `main` branch for auto-deploys. Once you have a deployed contract
-   address, set `VITE_SPLITLINE_ADDRESS` as an environment variable on the Vercel project
-   (`vercel env add VITE_SPLITLINE_ADDRESS production`) and redeploy.
-10. **Submit**: Arc Studio project URL, live app link, contract address + one explorer.arc.io
-    transaction link, this repo's URL, a video walkthrough, a short description, and a public
-    builder profile (GitHub/X/Farcaster).
+v1 (`contracts/`, `app/`, `scripts/`) is the first version: a single-contract split with
+`pay`, `claim`, `claimTo` and `release`, 30 Foundry tests, and an `agent-pays.ts`
+software-to-software demo. It was written outside Arc Studio, then imported into a separate
+Studio project for testing, review and a testnet deploy; its mainnet deploy was run locally
+with Foundry. It moved real USDC on Arc mainnet: a 60/40 split, a 2.000001 USDC payment, an
+`agent-pays.ts` payment of 0.05 USDC (ref `agent-demo`), and two payouts of 1.23 and 0.82
+USDC. v2 replaces it.
 
 ## Honest limits
 
-Not audited — keep balances small. Splits are permanently locked once created: a mistaken
-recipient can't be fixed, only replaced by creating a new split. A recipient that is itself a
-contract must be able to call `claim`/`claimTo`, or rely on anyone calling `release` for it.
+Not audited — keep balances small. Splits are permanently locked once created; a mistaken
+recipient can only be fixed by creating a new split. USDC sent straight to the Spliteline
+contract (not through `pay`, `payWithPermit` or a deposit address) can't be recovered, since
+there is no admin. If Circle ever blocklisted the Spliteline contract itself, every payout
+would freeze. A recipient that is itself a contract must be able to call `claim`/`claimTo`,
+or rely on anyone calling `release` for it.
