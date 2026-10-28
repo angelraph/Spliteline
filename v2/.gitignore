@@ -10,3 +10,4 @@ console.jsonl
 traces.jsonl
 dist/
 !.env.example
+!.env.production

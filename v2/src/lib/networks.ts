@@ -63,8 +63,8 @@ export const NETWORKS: AppNetwork[] = [
   ),
 ]
 
-/** Testnet is always the default. */
-export const DEFAULT_NETWORK = NETWORKS[0]
+/** Mainnet is the default once a mainnet contract is configured; until then, testnet. */
+export const DEFAULT_NETWORK = NETWORKS.find((n) => n.key === 'mainnet' && n.address) ?? NETWORKS[0]
 
 export const COMING_SOON_MAINNET = 'Coming soon on mainnet'
 

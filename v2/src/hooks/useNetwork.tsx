@@ -11,7 +11,7 @@ interface NetworkContextValue {
 const STORAGE_KEY = 'spliteline:network'
 const NetworkContext = createContext<NetworkContextValue | undefined>(undefined)
 
-/** A `?net=mainnet` link wins over the saved preference; testnet is the default. */
+/** A `?net=` link wins over the saved preference; otherwise DEFAULT_NETWORK. */
 function initialNetwork(): AppNetwork {
   try {
     const fromUrl = new URLSearchParams(window.location.search).get('net')
