@@ -1,15 +1,19 @@
 # Arc Microgrants submission — Spliteline
 
-Copy for the DoraHacks form. Fill in the two mainnet items marked TODO after the v2 mainnet
-deploy; everything else is final and checkable onchain or in the Arc Studio project.
+Copy for the DoraHacks form. Fill in the example transaction marked TODO after the first real
+v2 mainnet payment; everything else is final and checkable onchain or in the Arc Studio
+project.
 
 ## Links
 
 - **Arc Studio project:** https://studio.arc.io/app/a27d937d-b07d-4e2c-9f4c-4a4d3ee574d0
 - **Live app:** https://spliteline.xyz
 - **Repo:** https://github.com/angelraph/Spliteline
-- **Contract (Arc mainnet):** TODO — v2 address, `https://explorer.arc.io/address/<address>`
-- **Example transaction:** TODO — a v2 mainnet payment, `https://explorer.arc.io/tx/<hash>`
+- **Contract (Arc mainnet):** `0xb34d3a3d293385f750fdfdd75f734f6cc52931a3` —
+  https://explorer.arc.io/address/0xb34d3a3d293385f750fdfdd75f734f6cc52931a3
+- **Example transaction:** TODO — the first real v2 mainnet payment into a split,
+  `https://explorer.arc.io/tx/<hash>` (deploy tx, for reference:
+  https://explorer.arc.io/tx/0xc77b8a16ca7d1d2169da8875ed18060d5382e5ebd7d247f7f1e300167e009e39)
 - **Proof journey:** https://spliteline.xyz/proof
 
 ## Short description

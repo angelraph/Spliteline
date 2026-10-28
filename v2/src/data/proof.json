@@ -1,8 +1,13 @@
 {
   "_comment": "Fill in the mainnet section after the v2 mainnet deploy. Each transaction is { \"label\": \"...\", \"hash\": \"0x...\" } and is linked to the Arc explorer.",
   "mainnet": {
-    "contract": "",
-    "transactions": []
+    "contract": "0xb34d3a3d293385f750fdfdd75f734f6cc52931a3",
+    "transactions": [
+      {
+        "label": "Deploy Spliteline v2 to Arc mainnet",
+        "hash": "0xc77b8a16ca7d1d2169da8875ed18060d5382e5ebd7d247f7f1e300167e009e39"
+      }
+    ]
   },
   "testnet": {
     "contract": "0x8dc07d75917bfaed1b7cc389fccc98ffc23bd13f",

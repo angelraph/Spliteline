@@ -46,6 +46,11 @@ prompt:
    1280px for overflow and console errors.
 5. **Brand.** Studio matched the existing Spliteline brand and site structure, added Docs,
    FAQ and Proof pages, and wired in Arc mainnet.
+6. **Mainnet.** Arc Studio does not sign mainnet transactions, so the mainnet deploy was sent
+   from the builder's own wallet through a one-button deploy page holding the compiled
+   contract. Before deploying, the compiled runtime code was checked byte-for-byte against
+   Studio's tested testnet contract (identical apart from the per-deployment immutable
+   addresses); after deploying, the mainnet code was checked the same way.
 
 Code was exported from Studio with its *Download Code* button and committed under `v2/`.
 Everything outside `v2/` is v1, the earlier prototype (see below).
@@ -83,7 +88,7 @@ mainnet views show "Coming soon on mainnet".
 | Network | Contract | Status |
 |---|---|---|
 | Arc Testnet | `0x8dc07d75917bfaed1b7cc389fccc98ffc23bd13f` | Live, 33 end-to-end transactions |
-| Arc mainnet (v2) | — | Pending deploy |
+| Arc mainnet (v2) | [`0xb34d3a3d293385f750fdfdd75f734f6cc52931a3`](https://explorer.arc.io/address/0xb34d3a3d293385f750fdfdd75f734f6cc52931a3) | Live — deployed in [`0xc77b8a16…9e39`](https://explorer.arc.io/tx/0xc77b8a16ca7d1d2169da8875ed18060d5382e5ebd7d247f7f1e300167e009e39), block 28,289,938 |
 | Arc mainnet (v1) | [`0xdB329C9f13705A819436e1e041Fb0b94c75DB1D5`](https://explorer.arc.io/address/0xdB329C9f13705A819436e1e041Fb0b94c75DB1D5) | Live, 6 transactions |
 
 ## v1 prototype
