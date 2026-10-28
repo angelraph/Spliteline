@@ -116,37 +116,40 @@ claims their exact share) before this README was written.
 
 ## How this was built with Arc Studio
 
-The contracts, tests, and app in this repo are a complete, independently-tested reference
-implementation — every test above runs and passes locally. Arc's own eligibility rules say a
-submission must be *built in Arc Studio*, so the actual submitted build goes through
-[studio.arc.io](https://studio.arc.io) using this repo (pushed to GitHub, connected via
-Studio's GitHub import) as the steer:
+**Arc Studio project:**
+[studio.arc.io/app/ecb4f201-d9d6-4667-b0f5-834883029d13](https://studio.arc.io/app/ecb4f201-d9d6-4667-b0f5-834883029d13)
 
-1. **Contract.** Paste into Arc Studio:
-   > Write a Solidity 0.8 contract called Splitline. Immutable USDC revenue splits using only
-   > the ERC-20 USDC interface at 0x3600000000000000000000000000000000000000 (6 decimals). No
-   > owner, no admin, no fee, not payable. createSplit(name, recipients[], bps[]) with max 20
-   > recipients, bps sum 10000, no zero address, no duplicates, no self. pay(id, amount, ref)
-   > uses transferFrom and adds to totalReceived. Cumulative accounting: owed =
-   > totalReceived\*bps/10000 - released. claim, claimTo, release(id, recipient), getSplit.
-   > Events SplitCreated, Paid, Claimed. Use SafeERC20 and a reentrancy guard. `ref` is
-   > bytes32. The USDC address is a hardcoded constant, not a constructor parameter. Reject a
-   > recipient equal to the contract's own address.
-2. **Tests.** "Write Foundry tests including fuzz tests for these invariants: claimed plus
-   owed never exceeds received; dust below recipient count; balance equals received minus
-   claimed; one reverting recipient never blocks others; rejects zero address, duplicates, bad
-   bps sum, more than 20 recipients, zero amount."
-3. **Review.** "Review the contract for reentrancy, rounding, and denial of service. List
-   findings and fix them."
-4. **App.** "Build a React app for this contract with pages /, /s/:id, /claim, /proof as
-   specified. Read data from contract views and events in small block ranges. Show a single
-   USDC balance. Handle wrong network, approval then pay steps, errors, empty states, and
-   mobile."
-5. **Agent script.** "Add scripts/agent-pays.ts that pays a split from a script wallet with a
-   reference string."
+To be straightforward about who did what: the first version of the contract, tests, app, and
+agent script was written in this repo with an AI coding assistant (Claude Code), then
+imported into Arc Studio from GitHub. Since then, Arc Studio has been the workbench for
+testing, reviewing, deploying to testnet, verifying the mainnet deploy, and building new
+features:
 
-If Studio's own output ever diverges from this repo, this repo is the tie-breaker — it's
-already proven correct by the test suite above.
+1. **Import, build, and test** (Oct 23). Studio created the project from this repo,
+   installed dependencies, compiled the contract, ran the full Foundry suite (31 tests: 26
+   unit, 3 fuzz, 2 invariant — all passing), and brought the app up in its live preview.
+2. **Security review.** Studio reviewed `Splitline.sol` for reentrancy, rounding, and
+   denial of service. It found no issues requiring a fix, and listed design notes that are
+   now in [Honest limits](#honest-limits): anyone can `release` a recipient's payout at a
+   time they didn't choose, a 0-bps recipient wastes a slot, USDC sent to the contract outside
+   `pay` is unrecoverable, and a Circle blocklisting of the contract itself would freeze
+   payouts.
+3. **Testnet deploy.** Studio deployed Splitline to Arc Testnet, wired the preview to it,
+   and confirmed the deployment onchain before any mainnet step.
+4. **Mainnet deploy — done outside Studio.** Studio can't sign mainnet transactions from the
+   builder's own wallet, so the mainnet deploy was run locally with this repo's
+   `contracts/script/Deploy.s.sol` (Foundry). Studio then verified it onchain: the runtime
+   bytecode at `0xdB329C9f13705A819436e1e041Fb0b94c75DB1D5` matches the compiled
+   `Splitline.sol` exactly, `nextId()` reads as expected, and the deploy is recorded in the
+   project's `AGENTS.md`.
+5. **New feature: push payouts from the UI.** The contract's `release(id, recipient)` had no
+   button in the app. Studio added per-recipient owed amounts and a Release button on
+   `/s/:id` (new `RecipientRow` component and `useReleaseToRecipient` hook, with feed and
+   totals refreshing after a confirmed release). It ran `forge test` (31/31), `npm run build`,
+   and `npm run lint`, then exercised the same calls on Arc Testnet with a throwaway wallet:
+   a 0.10 USDC payment into a 60/40 split showed 0.06 / 0.04 owed, `release` paid out the
+   0.06, and a second `release` correctly reverted with `NothingOwed`. The work is on the
+   `studio/release-button` branch.
 
 ## Deployment & proof runbook
 
@@ -190,3 +193,10 @@ in order, using small amounts and fresh wallets:
 Not audited — keep balances small. Splits are permanently locked once created: a mistaken
 recipient can't be fixed, only replaced by creating a new split. A recipient that is itself a
 contract must be able to call `claim`/`claimTo`, or rely on anyone calling `release` for it.
+
+From Arc Studio's review: anyone can `release` a recipient's payout at a time the recipient
+didn't choose (it always goes to their own address); a recipient with 0 basis points can
+never claim and only wastes one of the 20 slots; USDC transferred straight to the contract
+instead of through `pay` isn't attributed to any split and can't be recovered, which is
+inherent to a contract with no admin; and if Circle ever blocklisted the Splitline contract
+address itself, every payout would freeze.

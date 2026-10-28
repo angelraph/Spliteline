@@ -5,23 +5,28 @@
     "note": "Contract: 0xdB329C9f13705A819436e1e041Fb0b94c75DB1D5"
   },
   {
-    "label": "Create the demo split (50/30/20)",
-    "hash": "",
-    "note": ""
+    "label": "Create the demo split (60/40, two recipients)",
+    "hash": "0xcf642fedf228dc60b21a293d259c3e8b831588ebf4fb462bd54464dd98f39d5d",
+    "note": "Split #0, \"feast of payment\""
   },
   {
-    "label": "Pay into the split (real USDC)",
-    "hash": "",
-    "note": ""
+    "label": "Pay 2.000001 USDC into the split",
+    "hash": "0x2225c2aa10fcf48c53722ecd761d95d965ac7ed0e086d4493055a0e2ff2ef1a1",
+    "note": "pay(0, 2000001, 0x0)"
   },
   {
-    "label": "agent-pays.ts: software-to-software payment",
-    "hash": "",
-    "note": ""
+    "label": "agent-pays.ts: software-to-software payment (0.05 USDC)",
+    "hash": "0x86438c7d432a8ebbf69f0b341d78f36c8cb72d7192316a7d7f0e3ce03cbe3184",
+    "note": "pay(0, 50000, \"agent-demo\")"
   },
   {
-    "label": "Recipient claims their share",
-    "hash": "",
-    "note": ""
+    "label": "Release 1.23 USDC to the 60% recipient",
+    "hash": "0x7bc6df4cf6143f808d162b8bbeb75188388c0cca4becd501c8ebc072455efbee",
+    "note": "release(0, 0xF3DBB59eC67372095211b20D830340c1C4EEBbb3)"
+  },
+  {
+    "label": "Release 0.82 USDC to the 40% recipient",
+    "hash": "0xdb9b178136eeab209accb89da15523d39feb4d7a08c12989cd6bb9c5c348bff2",
+    "note": "release(0, 0xFde19f3BCd5482544ce672391d839a56dA96BFEE)"
   }
 ]
