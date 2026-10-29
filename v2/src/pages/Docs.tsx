@@ -20,7 +20,8 @@ const fn = (sig: string) => <Code>{sig}</Code>
 
 const FUNCTIONS: Array<[string, string]> = [
   ['createSplit(string name, address[] recipients, uint16[] bps) returns (uint256 id, address depositAddress)', 'Creates an immutable split and its deposit address. 1 to 20 recipients, each share above 0, shares add up to exactly 10000 (100.00%), no zero address, no duplicates. Anyone can call it.'],
-  ['pay(uint256 id, uint256 amount, bytes32 ref)', 'Pays USDC into a split with transferFrom. The caller must have approved the contract. Reverts on a zero amount.'],
+  ['pay(uint256 id, uint256 amount, bytes32 ref)', 'Pays USDC into a split with transferFrom (token interface). The caller must have approved the contract. Reverts on a zero amount.'],
+  ['payNative(uint256 id, bytes32 ref) payable', 'Pays native USDC into a split: a plain value transfer with no approval and no signature. msg.value must be a whole number of micro-USDC (a multiple of 1e12 wei) or it reverts with NativeAmountNotWhole. Credits msg.value / 1e12 and emits Paid. This is how the Pay card pays by default.'],
   ['payWithPermit(uint256 id, uint256 amount, bytes32 ref, uint256 deadline, uint8 v, bytes32 r, bytes32 s)', 'The same payment in one transaction using an EIP-2612 permit signature. If the permit was already used by someone else, an existing allowance is enough.'],
   ['sweep(uint256 id) returns (uint256 amount)', 'Moves everything waiting at the split’s deposit address into the split and credits it like a payment. Anyone can call it. Reverts with NothingToSweep when the address is empty.'],
   ['claim(uint256 id)', 'Pays the caller what they are owed to their own address. Sweeps the deposit address first.'],
@@ -38,7 +39,7 @@ const FUNCTIONS: Array<[string, string]> = [
 
 const EVENTS: Array<[string, string]> = [
   ['SplitCreated(uint256 indexed id, address indexed creator, address indexed depositAddress, string name, address[] recipients, uint16[] bps)', 'A split and its deposit address were created.'],
-  ['Paid(uint256 indexed id, address indexed payer, uint256 amount, bytes32 indexed ref)', 'USDC was paid in with pay or payWithPermit. ref is the reference you passed.'],
+  ['Paid(uint256 indexed id, address indexed payer, uint256 amount, bytes32 indexed ref)', 'USDC was paid in with pay, payWithPermit or payNative. ref is the reference you passed.'],
   ['Swept(uint256 indexed id, uint256 amount)', 'USDC from the deposit address was credited to the split, by sweep or automatically during a claim or release.'],
   ['Claimed(uint256 indexed id, address indexed recipient, address to, uint256 amount)', 'A payout. to equals recipient for claim and release.'],
 ]
@@ -53,6 +54,7 @@ const ERRORS: Array<[string, string]> = [
   ['SplitAlreadyExists', 'You already created a split with this exact name, recipients and shares. Change the name.'],
   ['SplitNotFound', 'No split has that id.'],
   ['ZeroAmount', 'The payment amount is 0.'],
+  ['NativeAmountNotWhole', 'payNative value is not a multiple of 1e12 wei, so it is not a whole number of 6-decimal USDC units.'],
   ['NothingToSweep', 'The deposit address holds no USDC.'],
   ['NotRecipient', 'The account is not a recipient of the split.'],
   ['NothingOwed', 'Nothing can be claimed right now.'],
@@ -63,7 +65,10 @@ const INTEGRATE = `import { erc20Abi, parseUnits } from 'viem'
 
 const USDC = '0x3600000000000000000000000000000000000000' // Arc USDC, 6 decimals
 
-// Pay with approve + pay
+// Simplest: pay with native USDC, one plain transaction (no approval, no signature)
+await wallet.writeContract({ address: SPLITLINE, abi: splitlineAbi, functionName: 'payNative', args: [id, ref], value: parseUnits('10', 18) }) // 10 USDC in native 18-decimal units
+
+// Or pay with approve + pay
 await wallet.writeContract({ address: USDC, abi: erc20Abi, functionName: 'approve', args: [SPLITLINE, amount] })
 await wallet.writeContract({ address: SPLITLINE, abi: splitlineAbi, functionName: 'pay', args: [id, amount, ref] })
 
@@ -78,7 +83,9 @@ const signature = await wallet.signTypedData({
   message: { owner, spender: SPLITLINE, value: amount, nonce, deadline },
 })
 
-// No contract call at all: send USDC straight to the deposit address
+// No contract call at all: a normal Send to the deposit address (what MetaMask's Send does)
+await wallet.sendTransaction({ to: depositAddress, value: parseUnits('10', 18) })
+// ...or the token interface
 await wallet.writeContract({ address: USDC, abi: erc20Abi, functionName: 'transfer', args: [depositAddress, amount] })
 
 // Recipients claim. This also collects whatever sits at the deposit address
@@ -156,7 +163,7 @@ export function Docs() {
             A <strong className="text-ink">split</strong> is created once with a name, up to 20 recipients and a share for each in basis points that add up to exactly 10,000 (100.00%). After that it can never be edited. There is no owner, no admin function, no fee and no upgrade path anywhere in the contract.
           </p>
           <p>
-            Anyone can pay USDC into a split, and each split also has its own <strong className="text-ink">deposit address</strong> that accepts a plain USDC transfer from any wallet, exchange or agent. Each recipient can claim their exact proportional share of everything the split has ever received. Anyone can also push a payout to a recipient with <Code>release</Code>.
+            Anyone can pay USDC into a split, and each split also has its own <strong className="text-ink">deposit address</strong> that accepts a plain USDC send from any wallet (MetaMask\u2019s normal Send works), exchange or agent. Each recipient can claim their exact proportional share of everything the split has ever received. Anyone can also push a payout to a recipient with <Code>release</Code>.
           </p>
         </DocSection>
 
@@ -168,7 +175,7 @@ export function Docs() {
 
           <H3>A deposit address per split</H3>
           <p>
-            Each split gets a minimal EIP-1167 clone deployed at creation with CREATE2. Its only function forwards its whole USDC balance to the Spliteline contract, and only the contract can call it. The address depends on the creator, the name, the recipients and their shares, not on the split id, so it can be computed before the split exists with <Code>predictDepositAddress</Code> and cannot be shifted by someone else creating a split in the meantime.
+            Each split gets a minimal EIP-1167 clone deployed at creation with CREATE2. Its only function forwards its whole USDC balance to the Spliteline contract, and only the contract can call it. It also accepts plain native USDC sends. The address depends on the creator, the name, the recipients and their shares, not on the split id, so it can be computed before the split exists with <Code>predictDepositAddress</Code> and cannot be shifted by someone else creating a split in the meantime.
           </p>
 
           <H3>Auto-sweep</H3>
@@ -189,7 +196,7 @@ export function Docs() {
 
         <DocSection id="reference" title="Contract reference">
           <p>
-            Source: <a className="font-semibold text-accent hover:underline" href="https://github.com/angelraph/Spliteline/tree/v2/v2/contracts" target="_blank" rel="noopener noreferrer">v2/contracts</a> in the repository. The contract is named <Code>Splitline</Code> in code.
+            Source: <a className="font-semibold text-accent hover:underline" href="https://github.com/angelraph/Spliteline/tree/main/v2/contracts" target="_blank" rel="noopener noreferrer">v2/contracts</a> in the repository. The contract is named <Code>Splitline</Code> in code.
           </p>
           <H3>Functions</H3>
           <RefList head={['Function', 'What it does']} rows={FUNCTIONS.map(([a, b]) => [fn(a), b])} />
@@ -209,8 +216,16 @@ export function Docs() {
 
         <DocSection id="arc" title="Arc-specific notes">
           <p>
-            On Arc, USDC is the native gas token and has two interfaces over one balance: a native 18-decimal one used for gas, and an ERC-20 interface at the fixed address <Code>0x3600000000000000000000000000000000000000</Code> with 6 decimals. Spliteline only uses the ERC-20 interface. It is not payable and never accepts native value.
+            On Arc, USDC is the native gas token and has two interfaces over <strong className="text-ink">one balance</strong>: a native 18-decimal one (what a wallet\u2019s normal Send moves, and what pays gas), and an ERC-20 interface at the fixed address <Code>0x3600000000000000000000000000000000000000</Code> with 6 decimals. They are the same funds: 1 token unit (0.000001 USDC) equals 10<sup>12</sup> native units, so a native balance of 5\u00d710<sup>17</sup> shows as 500,000 in <Code>balanceOf</Code>.
           </p>
+          <H3>Native USDC paths</H3>
+          <ul className="list-disc space-y-2 pl-5">
+            <li>A deposit address has a bare <Code>receive()</Code>, so a plain native Send works. The USDC is immediately visible to <Code>balanceOf</Code> in 6-decimal units and moves to the split over the token interface at the next sweep, claim, claim to another address or release.</li>
+            <li><Code>payNative(id, ref)</Code> accepts native value and credits <Code>msg.value / 1e12</Code>. A value that is not a whole multiple of 10<sup>12</sup> wei reverts with <Code>NativeAmountNotWhole</Code>.</li>
+            <li>The Spliteline contract itself has no <Code>receive</Code> or fallback, so a plain Send to the contract address is rejected instead of getting stuck. Payouts always go out over the token interface.</li>
+            <li><strong className="text-ink">Rounding dust.</strong> The token interface cannot express amounts below 10<sup>12</sup> wei. A native Send to a deposit address with a fraction of a micro-USDC leaves that fraction (less than 0.000001 USDC) at the address, where it stays unless a later deposit tops it up to a whole unit.</li>
+            <li><strong className="text-ink">Gas.</strong> A deposit address is a proxy contract, so a transfer to it costs about 24,000 gas. A sender that hard-codes exactly 21,000 gas runs out of gas and the transaction fails (the funds stay with the sender). Measured on Arc Testnet: 23,000 fails, 25,000 works. Wallets estimate gas automatically; for hard-coded senders use 30,000 or more.</li>
+          </ul>
           <p>The address is a constant in the contract rather than a constructor argument. It is fixed network-wide, so making it configurable would only add a way to misconfigure an otherwise immutable contract.</p>
           <ul className="list-disc space-y-2 pl-5">
             <li>Arc USDC supports EIP-2612. Its permit domain uses the name <Code>USDC</Code> and version <Code>2</Code>.</li>
@@ -223,10 +238,10 @@ export function Docs() {
         <DocSection id="security" title="Security and limits">
           <ul className="list-disc space-y-2 pl-5">
             <li>Built on OpenZeppelin v5: <Code>SafeERC20</Code> and <Code>ReentrancyGuard</Code> on every state-changing function, custom errors, and checks-effects-interactions.</li>
-            <li>167 Foundry tests covering every function and revert path, fuzz tests on share validation, rounding and nested accounting, and invariant tests that the contract balance always equals paid plus swept minus claimed.</li>
+            <li>223 Foundry tests covering every function and revert path, fuzz tests on share validation, rounding and nested accounting, and invariant tests that the contract balance always equals paid plus swept minus claimed.</li>
             <li>Reviewed with automated and manual passes, but <strong className="text-ink">not independently audited</strong>.</li>
             <li>Up to 20 recipients and names up to 64 bytes. Rounding dust is below the recipient count per split.</li>
-            <li>USDC sent straight to the Spliteline contract address, rather than to a split’s deposit address or through <Code>pay</Code>, cannot be credited and is stuck for good. There is no rescue function by design.</li>
+            <li>A plain Send to the Spliteline contract address is rejected. A token-interface transfer to it cannot be refused or credited, so that USDC is stuck for good. USDC sent to the clone implementation address is stuck too. There is no rescue function by design.</li>
             <li>A split cannot be changed. A wrong recipient can only be replaced by creating a new split.</li>
             <li>Listing a deposit address that does not exist yet only works if exactly that split is created later. Nest splits that already exist.</li>
           </ul>

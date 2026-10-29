@@ -1,6 +1,6 @@
 # Spliteline
 
-Immutable USDC revenue splits on Arc. Create a split, share its deposit address (any wallet, exchange or agent can send USDC to it), and every recipient claims their exact share. Splits can feed other splits, payers can use a one-transaction permit payment, and each split has a shareable payment link and an embeddable pay widget.
+Immutable USDC revenue splits on Arc. Create a split, share its deposit address (any wallet, exchange or agent can send USDC to it, including MetaMask's normal Send), and every recipient claims their exact share. Splits can feed other splits, payers pay with a plain one-transaction USDC send (no approval, no signature) or fall back to a permit or approve then pay, and each split has a shareable payment link and an embeddable pay widget.
 
 Built with [Arc Studio](https://studio.arc.io)
 
@@ -14,7 +14,7 @@ Built with [Arc Studio](https://studio.arc.io)
 - `/proof` Real transactions from the build, linked to the Arc explorer
 - `/embed/:id` Minimal pay widget for iframes
 
-Arc Testnet is the default network. Arc mainnet shows "Coming soon on mainnet" until a mainnet contract address is configured.
+The app defaults to Arc mainnet once a mainnet contract address is configured, otherwise Arc Testnet. Connecting a wallet never switches its network; the app asks only when a transaction needs it.
 
 ## Tech stack
 

@@ -4,6 +4,8 @@ export interface FriendlyError {
   /** The wallet owner declined; treat as a cancel, not a failure. */
   rejected: boolean
   message: string
+  /** True when the failure was recognised (a decoded contract error or a known wallet or network problem). */
+  known: boolean
 }
 
 const CUSTOM_ERRORS: Record<string, string> = {
@@ -18,6 +20,7 @@ const CUSTOM_ERRORS: Record<string, string> = {
     'You already created a split with this exact name and recipients. Change the name to create another.',
   SplitNotFound: 'That split does not exist on this network.',
   ZeroAmount: 'Enter an amount above 0.',
+  NativeAmountNotWhole: 'That amount has more than 6 decimal places. USDC amounts can have at most 6 decimals.',
   NothingToSweep: 'There is no USDC waiting at this deposit address right now.',
   NotRecipient: 'This wallet is not a recipient of that split.',
   InvalidDestination: 'Choose a real destination address. It cannot be empty or the Splitline contract itself.',
@@ -49,23 +52,23 @@ function isRejection(error: unknown): boolean {
 
 export function explainError(error: unknown): FriendlyError {
   if (isRejection(error)) {
-    return { rejected: true, message: 'You cancelled the request in your wallet. Nothing was sent.' }
+    return { rejected: true, known: true, message: 'You cancelled the request in your wallet. Nothing was sent.' }
   }
 
   if (error instanceof BaseError) {
     const reverted = error.walk((e) => e instanceof ContractFunctionRevertedError)
     if (reverted instanceof ContractFunctionRevertedError) {
       const name = reverted.data?.errorName
-      if (name && CUSTOM_ERRORS[name]) return { rejected: false, message: CUSTOM_ERRORS[name] }
+      if (name && CUSTOM_ERRORS[name]) return { rejected: false, known: true, message: CUSTOM_ERRORS[name] }
       const reason = reverted.reason ?? reverted.shortMessage
-      for (const [pattern, text] of MESSAGE_PATTERNS) if (pattern.test(reason)) return { rejected: false, message: text }
+      for (const [pattern, text] of MESSAGE_PATTERNS) if (pattern.test(reason)) return { rejected: false, known: true, message: text }
     }
   }
 
   const raw = error instanceof BaseError ? `${error.shortMessage} ${error.details ?? ''}` : String((error as Error)?.message ?? error)
   for (const [name, text] of Object.entries(CUSTOM_ERRORS)) {
-    if (new RegExp(`\\b${name}\\b`).test(raw)) return { rejected: false, message: text }
+    if (new RegExp(`\\b${name}\\b`).test(raw)) return { rejected: false, known: true, message: text }
   }
-  for (const [pattern, text] of MESSAGE_PATTERNS) if (pattern.test(raw)) return { rejected: false, message: text }
-  return { rejected: false, message: 'Something went wrong and nothing was sent. Please try again.' }
+  for (const [pattern, text] of MESSAGE_PATTERNS) if (pattern.test(raw)) return { rejected: false, known: true, message: text }
+  return { rejected: false, known: false, message: 'Something went wrong and nothing was sent. Please try again.' }
 }

@@ -3,6 +3,7 @@ import { erc20Abi, parseAbi, parseSignature, type Hex, type TransactionReceipt }
 import { useAccount, usePublicClient, useSignTypedData, useSwitchChain, useWriteContract } from 'wagmi'
 import { useQueryClient } from '@tanstack/react-query'
 import { useNetwork } from '@/hooks/useNetwork'
+import { Amount, usdcDecimalsFor, usdcToGasToken } from '@/onchain-money'
 import { explainError } from '@/lib/errors'
 import { getIndexer } from '@/lib/indexer'
 import { splitlineAbi } from '@/lib/splitlineAbi'
@@ -33,7 +34,9 @@ export type PayPhase =
   | 'success'
   | 'error'
 
-export type PayMode = 'allowance' | 'permit' | 'approve'
+/** native: a plain USDC value transfer (default). The rest are fallbacks that move USDC through its token interface. */
+export type PayMode = 'native' | 'allowance' | 'permit' | 'approve'
+export type PayMethod = 'native' | 'signature' | 'approve'
 
 export interface PayState {
   phase: PayPhase
@@ -41,8 +44,11 @@ export interface PayState {
   hash?: Hex
   error?: string
   rejected?: boolean
-  /** The permit signature was declined or unsupported, so approve then pay is on offer. */
+  /** The wallet step was declined, so the other ways to pay are on offer. */
   canUseApprove?: boolean
+  canUseSignature?: boolean
+  /** True when a fallback took over because the native payment could not be used. */
+  fellBack?: boolean
 }
 
 export function usePay() {
@@ -58,14 +64,16 @@ export function usePay() {
   const reset = useCallback(() => setState({ phase: 'idle' }), [])
 
   const pay = useCallback(
-    async (args: { id: bigint; amount: bigint; ref: Hex; forceApprove?: boolean }): Promise<TransactionReceipt | undefined> => {
+    async (args: { id: bigint; amount: bigint; ref: Hex; method?: PayMethod }): Promise<TransactionReceipt | undefined> => {
       const splitline = network.address
       if (!account || !publicClient || !splitline) {
         setState({ phase: 'error', error: 'Connect your wallet to continue.' })
         return undefined
       }
-      const { id, amount, ref, forceApprove } = args
+      const { id, amount, ref, method = 'native' } = args
+      const forceApprove = method === 'approve'
       let mode: PayMode = 'approve'
+      let fellBack = false
 
       const send = async (
         call: { address: typeof splitline; abi: typeof splitlineAbi | typeof erc20Abi; functionName: string; args: readonly unknown[] },
@@ -84,6 +92,63 @@ export function usePay() {
         setState({ phase: 'signing' })
         if (chainId !== network.chainId) await switchChainAsync({ chainId: network.chainId })
 
+        if (method === 'native') {
+          // Native first: one plain value transfer, no approval and no signature. On Arc the native balance and
+          // the ERC-20 balance are the same USDC, so the wallet simply shows "send X USDC".
+          const value = usdcToGasToken(network.chainId, Amount.fromRaw(amount, usdcDecimalsFor(network.chainId))).raw
+          setState({ phase: 'pay-wallet', mode: 'native' })
+          let request: unknown
+          try {
+            const sim = await publicClient.simulateContract({
+              account,
+              address: splitline,
+              abi: splitlineAbi,
+              functionName: 'payNative',
+              args: [id, ref],
+              value,
+            })
+            request = sim.request
+          } catch (simError) {
+            const friendly = explainError(simError)
+            // A recognised problem (bad amount, not enough balance, unknown split) is shown as is.
+            // An unrecognised revert means this deployment cannot take native payments: use the token interface.
+            if (friendly.known) throw simError
+            fellBack = true
+          }
+          if (request) {
+            let hash: Hex | undefined
+            try {
+              hash = await writeContractAsync(request as never)
+            } catch (sendError) {
+              const friendly = explainError(sendError)
+              if (friendly.rejected) {
+                setState({
+                  phase: 'error',
+                  mode: 'native',
+                  error: 'You cancelled the payment in your wallet. Nothing was sent.',
+                  rejected: true,
+                  canUseSignature: true,
+                  canUseApprove: true,
+                })
+                return undefined
+              }
+              // Recognised problems are shown; a wallet that cannot send this transaction falls back below.
+              if (friendly.known) throw sendError
+              fellBack = true
+            }
+            if (hash) {
+              setState({ phase: 'pay-confirming', mode: 'native', hash })
+              const receipt = await publicClient.waitForTransactionReceipt({ hash })
+              if (receipt.status !== 'success') throw new Error('The payment transaction reverted.')
+              setState((s) => ({ ...s, phase: 'success', hash: receipt.transactionHash }))
+              void getIndexer(network).refresh()
+              void queryClient.invalidateQueries()
+              return receipt
+            }
+          }
+        }
+
+        setState({ phase: 'signing', fellBack })
         const allowance = await publicClient.readContract({
           address: network.usdc,
           abi: erc20Abi,
