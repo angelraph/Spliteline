@@ -12,26 +12,26 @@ contract SplitlineDepositTest is SplitlineTestBase {
         usdc.mint(dep, 5e6);
         vm.prank(eve);
         vm.expectRevert(DepositAddress.NotSplitline.selector);
-        DepositAddress(dep).forward();
+        DepositAddress(payable(dep)).forward();
         vm.prank(alice);
         vm.expectRevert(DepositAddress.NotSplitline.selector);
-        DepositAddress(dep).forward();
+        DepositAddress(payable(dep)).forward();
         assertEq(usdc.balanceOf(dep), 5e6, "funds untouched");
     }
 
     function test_Deposit_ForwardRevertsForTestContractCaller() public {
         (, address dep) = _create3();
         vm.expectRevert(DepositAddress.NotSplitline.selector);
-        DepositAddress(dep).forward();
+        DepositAddress(payable(dep)).forward();
     }
 
     function test_Deposit_ForwardOnImplementationRevertsForNonSplitline() public {
         address impl = sl.DEPOSIT_IMPLEMENTATION();
         vm.prank(eve);
         vm.expectRevert(DepositAddress.NotSplitline.selector);
-        DepositAddress(impl).forward();
+        DepositAddress(payable(impl)).forward();
         vm.expectRevert(DepositAddress.NotSplitline.selector);
-        DepositAddress(impl).forward();
+        DepositAddress(payable(impl)).forward();
     }
 
     function test_Deposit_ForwardByImplementationBoundToSplitlineWorksOnlyForSplitline() public {
@@ -42,12 +42,14 @@ contract SplitlineDepositTest is SplitlineTestBase {
         assertEq(usdc.balanceOf(dep), 0);
     }
 
-    function test_Deposit_CloneRejectsPlainEth() public {
+    function test_Deposit_CloneAcceptsPlainNativeSend() public {
         (, address dep) = _create3();
         vm.deal(address(this), 1 ether);
+        vm.recordLogs();
         (bool ok,) = dep.call{value: 1 ether}("");
-        assertFalse(ok, "receive must not exist");
-        assertEq(dep.balance, 0);
+        assertTrue(ok, "receive must accept plain native send");
+        assertEq(dep.balance, 1 ether);
+        assertEq(vm.getRecordedLogs().length, 0, "receive emits no event");
     }
 
     function test_Deposit_CloneRejectsEthWithData() public {
@@ -55,6 +57,7 @@ contract SplitlineDepositTest is SplitlineTestBase {
         vm.deal(address(this), 1 ether);
         (bool ok,) = dep.call{value: 1}(hex"deadbeef");
         assertFalse(ok);
+        assertEq(dep.balance, 0);
     }
 
     function test_Deposit_CloneRejectsUnknownSelector() public {
@@ -63,10 +66,30 @@ contract SplitlineDepositTest is SplitlineTestBase {
         assertFalse(ok, "no fallback");
     }
 
-    function test_Deposit_CloneRejectsEmptyCalldata() public {
+    function test_Deposit_CloneEmptyCalldataNoValueSucceedsViaReceive() public {
         (, address dep) = _create3();
         (bool ok,) = dep.call("");
-        assertFalse(ok, "no receive/fallback");
+        assertTrue(ok, "receive accepts empty calldata (zero value)");
+        assertEq(dep.balance, 0);
+    }
+
+    function test_Deposit_CloneShortCalldataRejected() public {
+        (, address dep) = _create3();
+        vm.deal(address(this), 1 ether);
+        (bool ok,) = dep.call(hex"01");
+        assertFalse(ok, "1-byte calldata hits no fallback");
+        (ok,) = dep.call{value: 1}(hex"01020304");
+        assertFalse(ok);
+        assertEq(dep.balance, 0);
+    }
+
+    function test_Deposit_ForwardIsNotPayable() public {
+        (, address dep) = _create3();
+        vm.deal(address(sl), 1 ether);
+        vm.prank(address(sl));
+        (bool ok,) = dep.call{value: 1}(abi.encodeWithSignature("forward()"));
+        assertFalse(ok, "forward() is non-payable");
+        assertEq(dep.balance, 0);
     }
 
     function test_Deposit_CloneOnlyExposesForward() public {
@@ -83,6 +106,12 @@ contract SplitlineDepositTest is SplitlineTestBase {
             (bool ok,) = dep.call(abi.encodeWithSignature(sigs[i]));
             assertFalse(ok, sigs[i]);
         }
+        for (uint256 i; i < sigs.length; ++i) {
+            vm.deal(address(this), 1);
+            (bool okV,) = dep.call{value: 1}(abi.encodeWithSignature(sigs[i]));
+            assertFalse(okV, sigs[i]);
+        }
+        assertEq(dep.balance, 0, "only receive() accepts value");
         (bool okFwd, bytes memory ret) = dep.call(abi.encodeWithSignature("forward()"));
         assertFalse(okFwd, "forward() reverts for non-Splitline");
         assertEq(bytes4(ret), DepositAddress.NotSplitline.selector);

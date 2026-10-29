@@ -12,14 +12,17 @@ Built for DoraHacks' [Arc Microgrants: Built with Arc Studio](https://dorahacks.
 
 ## What makes v2 different
 
-- **Every split has its own deposit address.** A plain USDC transfer from any wallet,
-  exchange, payroll tool or AI agent counts — no integration, no special function call.
-  Each address is a deterministic EIP-1167 clone that can only forward to Spliteline.
+- **Every split has its own deposit address.** A plain USDC send from any wallet, exchange,
+  payroll tool or AI agent counts — no integration, no special function call. It accepts both
+  of Arc's USDC forms: the native balance (what MetaMask's normal *Send* moves) and the ERC-20
+  token. Each address is a deterministic EIP-1167 clone that can only forward to Spliteline.
+- **Arc-native, one-transaction payments.** `payNative` takes native USDC directly: one
+  transaction, no approve, no signature. It is the default on the site and in the embed widget.
 - **Claims sweep automatically.** USDC waiting at a deposit address is picked up by the next
   `claim`, `claimTo` or `release`, so recipients never need a separate step.
-- **One-transaction payments.** `payWithPermit` uses Arc USDC's EIP-2612 permit (verified on
-  Arc Testnet), so payers sign once instead of approve-then-pay. The app falls back to
-  approve + pay if a wallet can't sign.
+- **Fallbacks for every wallet.** `payWithPermit` uses Arc USDC's EIP-2612 permit (verified on
+  Arc Testnet) for a signature-based payment, and the app falls back to approve + pay if a
+  wallet can't sign.
 - **Splits can feed other splits.** A recipient can be another split's deposit address, so
   revenue flows down a chain (label → band → members) without trapping funds.
 - **Pull-based and failure-isolated.** Each recipient's payout is independent; one blocklisted
@@ -51,6 +54,13 @@ prompt:
    contract. Before deploying, the compiled runtime code was checked byte-for-byte against
    Studio's tested testnet contract (identical apart from the per-deployment immutable
    addresses); after deploying, the mainnet code was checked the same way.
+7. **Arc-native USDC.** Testing on mainnet showed that a MetaMask *Send* (native USDC) to a
+   deposit address reverted: the clone had no `receive()`. Studio added an empty `receive()` and
+   `payNative`, proved on Arc Testnet that native USDC sent to a deposit address shows up
+   exactly in the ERC-20 balance and is swept and paid out correctly, added 54 native-path tests
+   (223 total), and made native the app's default payment. That version was redeployed to
+   mainnet, and both contracts are source-verified (exact match) on Sourcify and
+   explorer.arc.io.
 
 Code was exported from Studio with its *Download Code* button and committed under `v2/`.
 Everything outside `v2/` is v1, the earlier prototype (see below).
@@ -74,7 +84,7 @@ cd v2
 bun install
 cp .env.example .env
 bun run dev              # app
-forge test               # contracts: 164 tests + 4 invariants
+forge test               # contracts: 223 tests incl. fuzz and invariants
 bun run build            # production build
 ```
 
@@ -87,8 +97,10 @@ mainnet views show "Coming soon on mainnet".
 
 | Network | Contract | Status |
 |---|---|---|
-| Arc Testnet | `0x8dc07d75917bfaed1b7cc389fccc98ffc23bd13f` | Live, 33 end-to-end transactions |
-| Arc mainnet (v2) | [`0xb34d3a3d293385f750fdfdd75f734f6cc52931a3`](https://explorer.arc.io/address/0xb34d3a3d293385f750fdfdd75f734f6cc52931a3) | Live — deployed in [`0xc77b8a16…9e39`](https://explorer.arc.io/tx/0xc77b8a16ca7d1d2169da8875ed18060d5382e5ebd7d247f7f1e300167e009e39), block 28,289,938 |
+| **Arc mainnet (v2, current)** | [`0x44e2d6ca200bf106626d94fc560db81354209b3c`](https://explorer.arc.io/address/0x44e2d6ca200bf106626d94fc560db81354209b3c) | Live, source-verified — deployed in [`0x316f6a0c…93ea`](https://explorer.arc.io/tx/0x316f6a0c131d85025a708ef5d49e09546a807bc85a7262289ee75a336fce93ea), block 28,488,992. Deposit-address implementation [`0xd745e22e…743f`](https://explorer.arc.io/address/0xd745E22e3C871D4486FD8e039b6B01948564743f) |
+| Arc Testnet (v2, current) | [`0x03d335175967bc5d10d50b08fd9d63a768941721`](https://explorer.testnet.arc.io/address/0x03d335175967bc5d10d50b08fd9d63a768941721) | Source-verified, 26-transaction end-to-end run incl. native sends |
+| Arc mainnet (v2, first deploy) | [`0xb34d3a3d293385f750fdfdd75f734f6cc52931a3`](https://explorer.arc.io/address/0xb34d3a3d293385f750fdfdd75f734f6cc52931a3) | Superseded — no native-USDC support; where the MetaMask-send bug was found |
+| Arc Testnet (v2, first deploy) | `0x8dc07d75917bfaed1b7cc389fccc98ffc23bd13f` | Superseded, 33 end-to-end transactions |
 | Arc mainnet (v1) | [`0xdB329C9f13705A819436e1e041Fb0b94c75DB1D5`](https://explorer.arc.io/address/0xdB329C9f13705A819436e1e041Fb0b94c75DB1D5) | Live, 6 transactions |
 
 ## v1 prototype

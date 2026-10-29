@@ -7,7 +7,7 @@ import { clsx } from 'clsx'
 import { TxLink } from '@/components/bits'
 import { Button, Card, Label, Notice, TextInput } from '@/components/ui'
 import { useNetwork } from '@/hooks/useNetwork'
-import { usePay, type PayPhase } from '@/hooks/usePay'
+import { usePay, type PayMethod, type PayPhase } from '@/hooks/usePay'
 import { encodeRef } from '@/lib/ref'
 import { formatUsdc, parseUsdcInput } from '@/lib/usdc'
 
@@ -44,13 +44,11 @@ export function PayCard({
       account && network.address
         ? [
             { address: network.usdc, abi: erc20Abi, functionName: 'balanceOf', args: [account], chainId: network.chainId },
-            { address: network.usdc, abi: erc20Abi, functionName: 'allowance', args: [account, network.address], chainId: network.chainId },
           ]
         : [],
     query: { enabled: Boolean(account && network.address), refetchInterval: 10_000 },
   })
   const balance = reads.data?.[0]?.status === 'success' ? (reads.data[0].result) : undefined
-  const allowance = reads.data?.[1]?.status === 'success' ? (reads.data[1].result) : undefined
 
   const parsed = amount.trim() === '' ? null : parseUsdcInput(amount)
   const refResult = encodeRef(ref)
@@ -66,15 +64,16 @@ export function PayCard({
   const { state } = payment
   const success = state.phase === 'success'
 
-  const submit = (forceApprove = false) => {
+  const submit = (method: PayMethod = 'native') => {
     if (!parsed || !refResult.ok) return
-    void payment.pay({ id: splitId, amount: parsed, ref: refResult.value, forceApprove })
+    void payment.pay({ id: splitId, amount: parsed, ref: refResult.value, method })
   }
 
-  const hint =
-    parsed && allowance !== undefined && allowance >= parsed
-      ? 'You already approved enough USDC, so this is a single transaction.'
-      : 'One transaction with a signature. If your wallet cannot sign, we switch to approve then pay.'
+  // The same USDC pays the network fee, so Max keeps a small reserve for it.
+  const FEE_RESERVE = 10_000n
+  const maxAmount = balance !== undefined && balance > FEE_RESERVE ? balance - FEE_RESERVE : 0n
+
+  const hint = 'Sent as a normal USDC transfer: one transaction, no approval and no signature.'
 
   return (
     <Card className={clsx(compact && 'border-0 bg-transparent shadow-none')}>
@@ -143,11 +142,11 @@ export function PayCard({
                       {q}
                     </button>
                   ))}
-                  {balance !== undefined && balance > 0n && (
+                  {maxAmount > 0n && (
                     <button
                       type="button"
                       disabled={payment.busy}
-                      onClick={() => setAmount(formatUsdc(balance, 0).replace(/,/g, ''))}
+                      onClick={() => setAmount(formatUsdc(maxAmount, 0).replace(/,/g, ''))}
                       className="min-h-11 rounded-full px-3 text-sm font-semibold text-accent hover:underline disabled:opacity-40 sm:min-h-9 sm:text-xs"
                     >
                       Max
@@ -183,8 +182,13 @@ export function PayCard({
             {state.phase === 'error' && state.error && (
               <Notice tone={state.rejected ? 'info' : 'danger'}>
                 {state.error}
+                {state.canUseSignature && (
+                  <button type="button" onClick={() => submit('signature')} className="mt-2 block min-h-11 py-2 font-semibold text-accent hover:underline">
+                    Pay with a signature instead
+                  </button>
+                )}
                 {state.canUseApprove && (
-                  <button type="button" onClick={() => submit(true)} className="mt-2 block min-h-11 py-2 font-semibold text-accent hover:underline">
+                  <button type="button" onClick={() => submit('approve')} className="block min-h-11 py-2 font-semibold text-accent hover:underline">
                     Approve and pay in two steps
                   </button>
                 )}
@@ -198,7 +202,7 @@ export function PayCard({
                 )}
               </ConnectKitButton.Custom>
             ) : (
-              <Button size="lg" full onClick={() => submit(false)} disabled={!canPay || payment.busy}>
+              <Button size="lg" full onClick={() => submit('native')} disabled={!canPay || payment.busy}>
                 {payment.busy ? (
                   <>
                     <Loader2 className="size-4 animate-spin" /> {PHASE_COPY[state.phase] ?? 'Working…'}
@@ -211,6 +215,9 @@ export function PayCard({
               </Button>
             )}
             {account && !payment.busy && <p className="text-center text-xs text-muted">{hint}</p>}
+            {payment.busy && state.fellBack && (
+              <p className="text-center text-xs text-muted">Native payments are not available here, so we are using a signed payment instead.</p>
+            )}
             {payment.busy && state.hash && (
               <p className="text-center">
                 <TxLink hash={state.hash} label="Track on the explorer" />

@@ -1,4 +1,4 @@
-// Generated from contracts/out/Splitline.sol/Splitline.json (v2). Do not hand-edit.
+// Generated from contracts/out/Splitline.sol/Splitline.json (v2 + native USDC paths). Do not hand-edit.
 export const splitlineAbi = [
   {
     "type": "constructor",
@@ -250,6 +250,24 @@ export const splitlineAbi = [
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "payNative",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "ref",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "payable"
   },
   {
     "type": "function",
@@ -567,6 +585,11 @@ export const splitlineAbi = [
   {
     "type": "error",
     "name": "NameTooLong",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NativeAmountNotWhole",
     "inputs": []
   },
   {

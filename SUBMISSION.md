@@ -9,11 +9,11 @@ project.
 - **Arc Studio project:** https://studio.arc.io/app/a27d937d-b07d-4e2c-9f4c-4a4d3ee574d0
 - **Live app:** https://spliteline.xyz
 - **Repo:** https://github.com/angelraph/Spliteline
-- **Contract (Arc mainnet):** `0xb34d3a3d293385f750fdfdd75f734f6cc52931a3` —
-  https://explorer.arc.io/address/0xb34d3a3d293385f750fdfdd75f734f6cc52931a3
-- **Example transaction:** TODO — the first real v2 mainnet payment into a split,
+- **Contract (Arc mainnet, source-verified):** `0x44e2d6ca200bf106626d94fc560db81354209b3c` —
+  https://explorer.arc.io/address/0x44e2d6ca200bf106626d94fc560db81354209b3c
+- **Example transaction:** TODO — the first real mainnet payment into a split,
   `https://explorer.arc.io/tx/<hash>` (deploy tx, for reference:
-  https://explorer.arc.io/tx/0xc77b8a16ca7d1d2169da8875ed18060d5382e5ebd7d247f7f1e300167e009e39)
+  https://explorer.arc.io/tx/0x316f6a0c131d85025a708ef5d49e09546a807bc85a7262289ee75a336fce93ea)
 - **Proof journey:** https://spliteline.xyz/proof
 
 ## Short description
@@ -23,10 +23,10 @@ recipients with fixed percentages — and nobody can ever change it: no owner, n
 fee, no upgrade path.
 
 What makes it different: every split gets its own deposit address, so any wallet, exchange,
-payroll tool or AI agent can pay it with a plain USDC transfer, no integration needed.
-Recipients claim their exact share whenever they want, and each claim automatically
-collects whatever is waiting at the deposit address. Payers can pay in one transaction with
-a USDC permit signature. Splits can feed other splits, so revenue can flow down a chain
+payroll tool or AI agent can pay it with a plain USDC send, no integration needed — including
+MetaMask's normal Send of Arc's native USDC. Recipients claim their exact share whenever they
+want, and each claim automatically collects whatever is waiting at the deposit address. On
+the site, paying is Arc-native: one transaction with native USDC, no approve and no signature. Splits can feed other splits, so revenue can flow down a chain
 (label → band → members). Payouts are pull-based and independent, so one blocklisted or
 broken recipient can never block anyone else. Every split also has a shareable payment link
 and an embeddable pay widget, and the whole app reads straight from onchain events with no
@@ -44,6 +44,12 @@ We built Spliteline v2 in Arc Studio from the first prompt:
    transactions, fixing the bugs it found.
 3. Studio matched our existing brand and site, added Docs, FAQ and Proof pages, made every
    page work down to 360px wide, and wired in Arc mainnet.
+4. When our own mainnet test showed a MetaMask Send to a deposit address reverting, Studio
+   made Spliteline Arc-native: it added native-USDC support, proved on Arc Testnet that native
+   USDC lands exactly in the ERC-20 balance and pays out correctly, wrote 54 more tests (223
+   total), made native payment the app default, and verified the source on the explorer. We
+   redeployed that version to mainnet from our own wallet; both contracts are source-verified
+   on explorer.arc.io.
 
 An earlier v1 prototype was written outside Studio and later imported into a separate Studio
 project for testing and review; it also moved real USDC on mainnet. v2 replaces it, and the

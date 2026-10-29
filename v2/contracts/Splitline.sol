@@ -12,8 +12,15 @@ import {DepositAddress} from "./DepositAddress.sol";
 /// @title Splitline
 /// @notice Immutable, permissionless, pull-based Arc USDC revenue splits.
 /// @dev Assumes trusted USDC with exact transfers (not fee-on-transfer). All amounts use six decimals.
-/// USDC sent directly to Splitline outside pay/payWithPermit/sweep, or sent to the DepositAddress
+/// USDC sent directly to Splitline outside pay/payWithPermit/payNative/sweep, or sent to the DepositAddress
 /// implementation, is not creditable and is permanently stuck. There is no rescue or administrator.
+///
+/// Native USDC on Arc. On Arc the native balance (18 decimals) and the ERC-20 interface at USDC (6 decimals)
+/// are one balance related by 1e12. `payNative` accepts native value and credits `msg.value / 1e12` in
+/// 6-decimal units; because the native value lands in this contract's single USDC balance, the ERC-20
+/// `balanceOf(this)` rises by exactly the credited amount and every payout still goes out over the ERC-20
+/// interface. Splitline has NO receive or fallback: a plain native send to this address reverts instead of
+/// being stranded. This relies on Arc's unified-balance design; it was verified on Arc Testnet.
 /// A blocklisted deposit address prevents only that split's sweep; direct pay remains available
 /// subject to USDC's other transfer restrictions. Payouts are independent and never iterate recipients.
 /// Cumulative floor-rounded entitlements are monotonic; unallocated rounding dust is less than the
@@ -25,7 +32,7 @@ import {DepositAddress} from "./DepositAddress.sol";
 /// failing clone never reverts the payout), so direct deposits count without a separate sweep call.
 /// For nesting, release(parent, childDeposit) funds a child clone; the child is credited by the next
 /// sweep(child) or by any claim, claimTo or release on the child.
-/// There is no automatic recursive sweep, payable entry point, receive, or fallback function.
+/// There is no automatic recursive sweep, receive, or fallback function; payNative is the only payable entry point.
 contract Splitline is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -39,6 +46,8 @@ contract Splitline is ReentrancyGuard {
     uint256 public nextId = 1;
 
     uint256 private constant BPS_DENOMINATOR = 10_000;
+    /// @dev Wei of native USDC (18 decimals) per ERC-20 unit (6 decimals).
+    uint256 private constant NATIVE_SCALE = 1e12;
 
     struct Split {
         string name;
@@ -70,6 +79,8 @@ contract Splitline is ReentrancyGuard {
     error InvalidBps();
     /// @notice Payment amount is zero.
     error ZeroAmount();
+    /// @notice Native value is not a whole number of 6-decimal USDC units (a multiple of 1e12 wei).
+    error NativeAmountNotWhole();
     /// @notice The deposit clone has no USDC to credit.
     error NothingToSweep();
     /// @notice The account is not a recipient of the split.
@@ -184,6 +195,21 @@ contract Splitline is ReentrancyGuard {
         _pay(id, amount, ref);
     }
 
+    /// @notice Pay a split with native USDC: a plain value transfer, no approval and no signature.
+    /// @dev `msg.value` must be a whole number of 6-decimal units (a multiple of 1e12 wei), otherwise
+    /// NativeAmountNotWhole, so no sub-micro remainder can be stranded here. Credits `msg.value / 1e12`
+    /// exactly like pay and emits Paid with the payer and reference. Nothing else is called.
+    /// @param id Existing split id.
+    /// @param ref Caller-supplied payment reference.
+    function payNative(uint256 id, bytes32 ref) external payable nonReentrant {
+        Split storage split = _requireSplit(id);
+        if (msg.value == 0) revert ZeroAmount();
+        if (msg.value % NATIVE_SCALE != 0) revert NativeAmountNotWhole();
+        uint256 amount = msg.value / NATIVE_SCALE;
+        split.totalReceived += amount;
+        emit Paid(id, msg.sender, amount, ref);
+    }
+
     /// @notice Forward and credit an existing split's entire deposit balance; callable by anyone.
     /// @dev Zero balance reverts NothingToSweep with no event or state change. The guard covers
     /// the forward-before-accounting interaction; this is necessary to discover the exact amount.
@@ -191,7 +217,7 @@ contract Splitline is ReentrancyGuard {
     /// @return amount USDC base units forwarded and credited.
     function sweep(uint256 id) external nonReentrant returns (uint256 amount) {
         Split storage split = _requireSplit(id);
-        amount = DepositAddress(split.depositAddress).forward();
+        amount = DepositAddress(payable(split.depositAddress)).forward();
         if (amount == 0) revert NothingToSweep();
         split.totalReceived += amount;
         emit Swept(id, amount);
@@ -202,7 +228,7 @@ contract Splitline is ReentrancyGuard {
     /// anyone's payout of already-credited revenue. The public sweep still reverts in both cases.
     /// Only the trusted clone and USDC are called, and every caller is nonReentrant.
     function _trySweep(uint256 id, Split storage split) private {
-        try DepositAddress(split.depositAddress).forward() returns (uint256 amount) {
+        try DepositAddress(payable(split.depositAddress)).forward() returns (uint256 amount) {
             if (amount != 0) {
                 split.totalReceived += amount;
                 emit Swept(id, amount);

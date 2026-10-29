@@ -1,204 +1,120 @@
 {
   "_comment": "Fill in the mainnet section after the v2 mainnet deploy. Each transaction is { \"label\": \"...\", \"hash\": \"0x...\" } and is linked to the Arc explorer.",
   "mainnet": {
-    "contract": "0xb34d3a3d293385f750fdfdd75f734f6cc52931a3",
+    "contract": "0x44e2d6ca200bf106626d94fc560db81354209b3c",
     "transactions": [
       {
-        "label": "Deploy Spliteline v2 to Arc mainnet",
-        "hash": "0xc77b8a16ca7d1d2169da8875ed18060d5382e5ebd7d247f7f1e300167e009e39"
+        "label": "Deploy Spliteline v2 to Arc mainnet (native USDC: deposit addresses accept plain sends, payNative)",
+        "hash": "0x316f6a0c131d85025a708ef5d49e09546a807bc85a7262289ee75a336fce93ea"
       }
     ]
   },
   "testnet": {
-    "contract": "0x8dc07d75917bfaed1b7cc389fccc98ffc23bd13f",
+    "contract": "0x03d335175967bc5d10d50b08fd9d63a768941721",
     "transactions": [
       {
-        "label": "Deploy Splitline v2 to Arc Testnet",
-        "hash": "0xef91ad3cb537edc07a66ec9d516ca6e7cce41ad9a7ccec4652e0351dabd1003e"
+        "label": "Deploy Splitline v2 with native USDC support to Arc Testnet (block 69,676,777)",
+        "hash": "0x93b4d6fdde157cbc50bebd4ed92daba0e9ec0acd341308e4c4e7148cb224f8c5"
       },
       {
-        "label": "fund A gas (USDC transfer 1.0)",
-        "hash": "0x05074f7acaefd7a8dcd528a60730d46e491d17363a8ad8bc15a3c10ef78adf91"
+        "label": "Create split #1",
+        "hash": "0xf1e2680e0cbaa7ffdfde5b34185ed368f193a4c1c708025e4699b69b346127e6"
       },
       {
-        "label": "fund B gas (USDC transfer 1.0)",
-        "hash": "0xf8a6f37018072d014f1a3acdc41e3a0c072e698bfc5c8943d76a147b15c8cd20"
+        "label": "Native send 0.5 USDC (plain value transfer) to the deposit address",
+        "hash": "0x7cd865c573c99ff6885dc8fc03ea4e4ff5571424553e15477db7c5ca7a8c9d7a"
       },
       {
-        "label": "createSplit child (A50/B30/C20)",
-        "hash": "0xb91c8843e9f13eb9b796b4faacbdb67f0285b3cab200106a5ef3697862f7bc85"
+        "label": "A claim on split #1 (auto-sweeps the native deposit)",
+        "hash": "0x1a1244066ecf23cea0553cf6b551c1f5d2750837423ab4fe6f71179787fd0c05"
       },
       {
-        "label": "USDC approve(Splitline, 2.0)",
-        "hash": "0xdafb99dc3ac120453defe2a8f0edd2b18fb130c621df37843757adc93dc1e0f4"
+        "label": "payNative 0.3 USDC to split #1",
+        "hash": "0x52710bb9a1de4383bb4c2a876d4bdde3597e97112aa524740ff7b1ff5e8e5322"
       },
       {
-        "label": "pay(child, 2.0)",
-        "hash": "0x93cdff28c2f93917e326e95fd715818e3cfe02e331a1cbf06e8fc66b51589638"
+        "label": "B claim on split #1 (pays 0.24 from native-funded pool)",
+        "hash": "0xc22471e4c7469b0c4cf612b28c324a14bd2eb64619dd890d85459c37fd2a4dd4"
       },
       {
-        "label": "payWithPermit(child, 3.0) single tx",
-        "hash": "0x5cf6c1483de52bd682ffbcb5380497531dd2c0a841ef1411b8db6588f66c13c3"
+        "label": "payNative with a non-whole amount (1e12+1 wei): reverts NativeAmountNotWhole",
+        "hash": "0xa8601bd3d82e40afaf851a1c3c798be5b38e9ba54191b8f4ef21f7096b9974c5"
       },
       {
-        "label": "direct USDC transfer to child deposit address (2.5)",
-        "hash": "0x5c0dd3409d3f8538923bd59c3832a7a161072577dec345c3c8a57d58bd170e48"
+        "label": "Plain native send to the Splitline address (reverts, nothing stuck)",
+        "hash": "0xeb5b6066ad10d7d890ecef627dce260fcac06492296ba0d5996e3b696cf01738"
       },
       {
-        "label": "A claim(child) with auto-sweep",
-        "hash": "0x5662bcfbb00e5d70f8e8b5196965e8dae186bae20d78579ab0bc301d158826b4"
+        "label": "Control: native send of 0.000001 USDC to an EOA with exactly 21000 gas",
+        "hash": "0xb5d57b69ba637a27c6f9846aa32c9751db2738ae93200b9aceff7af6d5c9c2c1"
       },
       {
-        "label": "B claimTo(child, F)",
-        "hash": "0x352f6755217fd6a4d96350f4a1d8f1fc19d64756f095019792296f57fb5b2221"
+        "label": "Native send to a deposit address with exactly 21000 gas",
+        "hash": "0x66f758bcef20020d3940c54723318a877a496f89af24f71ca0679c7b846af9a4"
       },
       {
-        "label": "P release(child, C)",
-        "hash": "0x2a75dd8a287c299fed7906b60344b1bf040b7e8ab56ee28c255a67d74da398a8"
+        "label": "Native send of 1e12+5 wei (1 micro-USDC + 5 wei) to the deposit address",
+        "hash": "0xf7605fe7c18046590b0758ceefdb556d8295945ee0d9af754aa33336f1f7ef82"
       },
       {
-        "label": "createSplit parent (E60 / childDeposit40)",
-        "hash": "0xdae41d01d861f622572867b2748a43630c0029b48897f7b2dd536988e30712ce"
+        "label": "sweep split #1 (moves 1 micro-USDC, 5 wei stay)",
+        "hash": "0x69cdfdd9138b75afcdf5e75a5b16782a2a2034752352c1ca8bd687ed63558bfe"
       },
       {
-        "label": "USDC approve(Splitline, 4.0)",
-        "hash": "0x79779cba00f2109aae9f89a5a38d0dccf106527d3353c21c5e2e4a9f9d678c45"
+        "label": "Create split #2 (nested recipient Split #1)",
+        "hash": "0x09b54940a879c5e266d0a6b6a9fe8e0dd424c67830bc5d3ddb797efce7f4648a"
       },
       {
-        "label": "pay(parent, 4.0)",
-        "hash": "0xe70d9975d73234435ddfad787d008db8fabd6f4c23a0c4bf2cf7f9bc2bcd2c63"
+        "label": "Pay 0.5 from the Pay card (payNative: one plain USDC transfer)",
+        "hash": "0x6cc80db6f9ae4967ba254da3721b5e7fcc8febbeff6dd7a9c169278451b9e106"
       },
       {
-        "label": "release(parent, E)",
-        "hash": "0x809798fa2a065ca860f3b5bac646f4dc222477fa063c65a123e4e61b9b07b24f"
+        "label": "Pay 0.25 after declining native: payWithPermit",
+        "hash": "0x8533c11470052cc0fe163f8e0fa70b7a02cda8ca578f571257c5effdf00c487a"
       },
       {
-        "label": "release(parent, childDeposit)",
-        "hash": "0x484ed98d4a936ff89e790933e57e353b5e51cc4e5077986b045bf045b3033096"
+        "label": "Pay 0.25 after declining native: USDC approve",
+        "hash": "0xf22dc0be166cfe9d0fca0edf3cce26645a7feba0f437bf20bd23263de2e46923"
       },
       {
-        "label": "A claim(child) auto-sweeps nested revenue",
-        "hash": "0x32182a7b2b9a44b5ff7e8ec267297275dc28cbb9917ddf52829c3660152a82d0"
+        "label": "Pay 0.25 after declining native: pay",
+        "hash": "0x14798049ab1809e419e2c4c19284abca22ec5c15c7e1bae1a9b5c51eb953324b"
       },
       {
-        "label": "release(child, B)",
-        "hash": "0x212c63a94d8d4d0a38096a0e82e603c4ce3749d2c2f3d2def76b173fe75008e9"
+        "label": "Pay 0.1 on a contract without payNative: automatic fallback to payWithPermit",
+        "hash": "0xe52e59e59421784e140bc99dd6a6b863cc1ffa79bbacd8ba9a4da608d3abae2e"
       },
       {
-        "label": "release(child, C)",
-        "hash": "0x52e88fef19ac04a654a4e5c2f6d517f3c7a8d14699c3ccd08f3a39428305bf2d"
+        "label": "Normal native Send of 0.3 USDC to the deposit address (gas estimated)",
+        "hash": "0x828fbcc0194c62d60ea4bf2a44a24cbe91659eb0f811361ddd7d817481876bff"
       },
       {
-        "label": "Create split #3 (nested recipient: Split #1)",
-        "hash": "0x5d09a92e42016978b9b73bd0449662a9b6f87764e02b69248f2d5cfb08db71c4"
+        "label": "A claim on split #2 (auto-sweeps the native Send, pays 0.7)",
+        "hash": "0x1549583143b1562a483e9e508bfc5ace3ee82cceae8b7b4619ecd724cb319809"
       },
       {
-        "label": "Pay with permit, 1.0 USDC, one transaction (payWithPermit)",
-        "hash": "0x5d4e9aa997273ec5c98a9060141ac5d5b3157e8f4a82f231a01ec527a83bfb4d"
+        "label": "B claimTo wallet F on split #2",
+        "hash": "0x0699151e54736d6e6a317bb2e6a5750c38fe408f3ea4b2d0c9ac723cdf58cf10"
       },
       {
-        "label": "Pay 0.5 after declining the signature: USDC approve",
-        "hash": "0x5a3774c5bdb0f1f11de2eb8e5b873bd603e28fcec2eab2bfc747a576f10784f6"
+        "label": "P release(split #2 -> split #1 deposit address)",
+        "hash": "0x30e15d188024553eda946ef83577b265fd136706f26c055926e7bb58b904c512"
       },
       {
-        "label": "Pay 0.5 after declining the signature: pay",
-        "hash": "0xa5a2251e21407ad9e3f7d94f9b1f4608ac4c8275cf44e31feb093eb296969b6f"
+        "label": "A claim on split #1 (nested native-funded revenue auto-swept)",
+        "hash": "0x88d14d048caecfc3f6a91b5e1903f628eb09487dae4602bf54dadc39fc6126a5"
       },
       {
-        "label": "Pay 0.25 with a wallet that cannot sign: USDC approve",
-        "hash": "0x4dc585e5108ca43f88bb37bab70a0158de4dd56155b27864a518535287939444"
+        "label": "Pay 0.2 through the embed widget (payNative, ref embed-native)",
+        "hash": "0xa1a85a2c0e7c271ef7e813e7892066991858184c08db219c4bbf68fd61acf1e5"
       },
       {
-        "label": "Pay 0.25 with a wallet that cannot sign: pay",
-        "hash": "0x861257a519ff2ea04447c880cf26818d9a58bd6900a36eb10fedbf091a65d2d3"
+        "label": "Normal native Send of 0.1 USDC to the deposit address (for the Sweep button)",
+        "hash": "0x1d89e289a0bcaa45b2bba974b59b956ca3750ea1e778803fe641eee1794d13d3"
       },
       {
-        "label": "Direct USDC transfer 0.4 to split #3 deposit address",
-        "hash": "0x9c214f1e5392afc87c448199ffbb533f016808415ec1ccd95ef809184955aa13"
-      },
-      {
-        "label": "A claim on split #3 (auto-sweeps the 0.4 direct deposit, pays 1.075)",
-        "hash": "0xb87639364977aa419ea886f63ae5052cb9d8ef5050329f2596932021694ae128"
-      },
-      {
-        "label": "B claimTo split #3 to wallet F (20% = 0.43)",
-        "hash": "0x4edaa3cbbeac1fcaff79b057d8e0c372198d46e6871e8982e981267b4cdcfb35"
-      },
-      {
-        "label": "P release(split #3, split #1 deposit address) = 0.645",
-        "hash": "0xfb8218edf471f520e689c5d8c6998c631f340cfa9c4723d14b761362f82c775c"
-      },
-      {
-        "label": "A claim on split #1 (auto-sweeps the nested 0.645 from split #3)",
-        "hash": "0xcab924a9d25cec88de179b595b9d54393931687d0f91bbebab02ba7975885a7c"
-      },
-      {
-        "label": "Pay 0.25 through the embed widget (payWithPermit, ref embed-test)",
-        "hash": "0x3e4c098177fda83d2f7c53e5f1a577f07b66e6700b780baf45a352d458430687"
-      },
-      {
-        "label": "Direct USDC transfer 0.1 to split #3 deposit address (for Sweep button test)",
-        "hash": "0x1f3035473a03278bb21a456489bc00ab5a4e550733f91584e5d677ef464e0e24"
-      },
-      {
-        "label": "Sweep now button on split #3 (sweeps 0.1)",
-        "hash": "0xfb3bb965c8977d2ea0e80de29ebd861b42256b34ca844ffe746c835354a1f0c6"
-      },
-      {
-        "label": "Create split #4 (nested recipient Split #1)",
-        "hash": "0xd68eaf3d07b9947e1eb0b653a76fd73410d5635ccdc2ed6c779f80d2a4be76db"
-      },
-      {
-        "label": "Pay 0.5 with permit (payWithPermit, one tx)",
-        "hash": "0x42b50743061795d5ac870220f711649add6db59a98a382bea57eb9dbc93af67c"
-      },
-      {
-        "label": "Pay 0.25 after declined signature: approve",
-        "hash": "0xc6b0cfb971ad45779a559a68418008f1e9d32fe95cf9424b95df1f55a4f36af5"
-      },
-      {
-        "label": "Pay 0.25 after declined signature: pay",
-        "hash": "0xb75ad022a636f3daac3b831d1441663eb7c8985724a14042dea1f629c1a86a25"
-      },
-      {
-        "label": "Pay 0.25 with a wallet that cannot sign: approve",
-        "hash": "0x28d5a2de20e62e7d8f1897344691161271e55e74041c82871fcfed611e42a2b8"
-      },
-      {
-        "label": "Pay 0.25 with a wallet that cannot sign: pay",
-        "hash": "0x95afe6abe00be51d57e7cddcc804e89af19ab7d8bd9f8a7cdade259e8b8f2798"
-      },
-      {
-        "label": "Direct USDC transfer 0.2 to the deposit address",
-        "hash": "0xbeb811f1ab681d75a232ac1a4dc92012b3d3bb52d018cb0476d2e9e8830be125"
-      },
-      {
-        "label": "A claim on split #4 (auto-sweeps 0.2, pays 0.6)",
-        "hash": "0xb4d328d35baa5e6049fdfe0128f5541454148c60f543e0440e32b31d496be2b6"
-      },
-      {
-        "label": "B claimTo wallet F on split #4 (20% = 0.24)",
-        "hash": "0x10c3a2674626de1c0fb81bc0ff91c96a9072d4856e0d25bee22132d760dea3f6"
-      },
-      {
-        "label": "P release(split #4 -> split #1 deposit address, 0.36)",
-        "hash": "0x1fe29ccd2c9031f5c10f13d229b3c125efff82c1fcbf4160d6e56f1fa6afeae3"
-      },
-      {
-        "label": "A claim on split #1 (nested revenue auto-swept, no sweep call)",
-        "hash": "0xe8198a78c7ea9bf5b744ba4cf9f1c801e78843df67f601e4a2e1f0d3f31ccb39"
-      },
-      {
-        "label": "Pay 0.2 through the embed widget (ref embed-run2)",
-        "hash": "0x7a8e05ba651735b5cc15e5643c8a4f91d36a42e82452cfa71bf3e218f981300f"
-      },
-      {
-        "label": "Direct USDC transfer 0.1 (Sweep button test)",
-        "hash": "0xa70967fd7f5a8f70daf0b6f1f84269ab6cd2fb6ccd786a1827a0e0295fc64078"
-      },
-      {
-        "label": "Sweep now button (sweeps 0.1)",
-        "hash": "0x26440912cbd66da0c3c66248ac4c4b423f618e83c7ff7fad8b5da5c8a1bbb77e"
+        "label": "Sweep now button (sweeps the native 0.1)",
+        "hash": "0xabfb78695258ba594985c2c900361abec7c9aa4cc4207886dd13bf52dbb74f8a"
       }
     ]
   }

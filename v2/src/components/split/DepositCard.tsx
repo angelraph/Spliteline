@@ -40,7 +40,7 @@ export function DepositCard({ split }: { split: SplitView }) {
               <AddressLink address={split.depositAddress} head={8} tail={6} className="px-1" />
             </div>
             <p className="mt-3 text-xs leading-relaxed text-muted">
-              USDC on {network.label} only. Plain transfers work, so nothing else is needed on the sender’s side.
+              USDC on {network.label} only. MetaMask’s normal Send works, and so does any wallet or exchange transfer. If a sender sets the gas limit by hand, use at least 30,000.
             </p>
           </div>
         </div>
