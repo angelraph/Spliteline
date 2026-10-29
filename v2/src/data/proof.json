@@ -6,6 +6,18 @@
       {
         "label": "Deploy Spliteline v2 to Arc mainnet (native USDC: deposit addresses accept plain sends, payNative)",
         "hash": "0x316f6a0c131d85025a708ef5d49e09546a807bc85a7262289ee75a336fce93ea"
+      },
+      {
+        "label": "Create split #1 (50/50, two recipients)",
+        "hash": "0xc66691f5ab4873d8e86a7ed273f7b079390affd346fb9724bf768aa1d0f7654d"
+      },
+      {
+        "label": "Create split #2 \"payment for alert subscription\" (50/50)",
+        "hash": "0x15bf6df1c794fb3b0e33c80c146e7931661984dd5c77b6e3939626fa7bc40d9d"
+      },
+      {
+        "label": "Pay 1.00 USDC into split #1 with payNative (one transaction, native USDC)",
+        "hash": "0x9d6e11060fde0ec84d58820ecba9dc382d45a2ad2cd60c07516c66b555c31f94"
       }
     ]
   },
