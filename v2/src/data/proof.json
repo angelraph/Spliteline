@@ -18,6 +18,22 @@
       {
         "label": "Pay 1.00 USDC into split #1 with payNative (one transaction, native USDC)",
         "hash": "0x9d6e11060fde0ec84d58820ecba9dc382d45a2ad2cd60c07516c66b555c31f94"
+      },
+      {
+        "label": "Create split #3 \"recharrge payment\" (50/50, two recipients)",
+        "hash": "0x59d0e71093493fa7a32c77419ec5ded28e6040d2e6ff4a9cbb0ce1753a9d3d3c"
+      },
+      {
+        "label": "Pay 1.00 USDC into split #3 with payNative",
+        "hash": "0x503cf402532ddce3d61e991e6f05e6d8b30b91ef87d5ee9fa06e5fec269781de"
+      },
+      {
+        "label": "Release 0.50 USDC to split #3 recipient 0x1F8e\u20267A49",
+        "hash": "0x3e0c79fe1004015df4190d81822e1f82281c586146c204eda73b4db6930f22dd"
+      },
+      {
+        "label": "Release 0.50 USDC to split #3 recipient 0x0c66\u20269Fb0",
+        "hash": "0xa7754f5852d4e4ddfaef52cb013b7ec03a4d280cc746d16d3710a10fdcd0b557"
       }
     ]
   },
