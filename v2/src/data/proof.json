@@ -34,6 +34,14 @@
       {
         "label": "Release 0.50 USDC to split #3 recipient 0x0c66\u20269Fb0",
         "hash": "0xa7754f5852d4e4ddfaef52cb013b7ec03a4d280cc746d16d3710a10fdcd0b557"
+      },
+      {
+        "label": "Release 0.50 USDC to split #1 recipient 0xb5F0\u2026fE9B",
+        "hash": "0x0d6fe9cdb49ce03e59a01afc4d70c4f4d192fd7d13b24b3c93bdbc0502edbf85"
+      },
+      {
+        "label": "Release 0.50 USDC to split #1 recipient 0xf2f5\u20260C2c",
+        "hash": "0xe2f44c4ea3d12b2b67b780090f2a779147ae05a6d2be73321ed68bea048aad3b"
       }
     ]
   },
