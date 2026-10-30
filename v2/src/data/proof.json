@@ -42,6 +42,22 @@
       {
         "label": "Release 0.50 USDC to split #1 recipient 0xf2f5\u20260C2c",
         "hash": "0xe2f44c4ea3d12b2b67b780090f2a779147ae05a6d2be73321ed68bea048aad3b"
+      },
+      {
+        "label": "Create split #4 \"thank you for testing our app\" (50/50, two friends' wallets)",
+        "hash": "0xb2d38faff4b1f714bf2fa6d4ed23186dad95a0927d7edc993eab9ab5e70c0111"
+      },
+      {
+        "label": "Plain MetaMask Send of 1.00 USDC (native) to split #4's deposit address",
+        "hash": "0x72468fc5641a30e473d4dd86cf3f5de65e42c26d393d565acbc74a298ee05fa7"
+      },
+      {
+        "label": "Friend 0x4775\u2026AC7C3B claims 0.50 USDC from their own wallet; the same transaction auto-sweeps the 1.00 USDC waiting at split #4's deposit address",
+        "hash": "0x1b5c7c874ed972e7736b517dbfc66e2568ebc9665ef4ebc5337003908497c6c8"
+      },
+      {
+        "label": "Friend 0xb7Cc\u2026ED61cB claims 0.50 USDC from their own wallet",
+        "hash": "0xd40859d447a5112a66cede2959ff50083ccb6b677ef49f5ef7be9fadd999a919"
       }
     ]
   },
