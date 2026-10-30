@@ -6,6 +6,42 @@
       {
         "label": "Deploy Spliteline v2 to Arc mainnet (native USDC: deposit addresses accept plain sends, payNative)",
         "hash": "0x316f6a0c131d85025a708ef5d49e09546a807bc85a7262289ee75a336fce93ea"
+      },
+      {
+        "label": "Create split #1 (50/50, two recipients)",
+        "hash": "0xc66691f5ab4873d8e86a7ed273f7b079390affd346fb9724bf768aa1d0f7654d"
+      },
+      {
+        "label": "Create split #2 \"payment for alert subscription\" (50/50)",
+        "hash": "0x15bf6df1c794fb3b0e33c80c146e7931661984dd5c77b6e3939626fa7bc40d9d"
+      },
+      {
+        "label": "Pay 1.00 USDC into split #1 with payNative (one transaction, native USDC)",
+        "hash": "0x9d6e11060fde0ec84d58820ecba9dc382d45a2ad2cd60c07516c66b555c31f94"
+      },
+      {
+        "label": "Create split #3 \"recharrge payment\" (50/50, two recipients)",
+        "hash": "0x59d0e71093493fa7a32c77419ec5ded28e6040d2e6ff4a9cbb0ce1753a9d3d3c"
+      },
+      {
+        "label": "Pay 1.00 USDC into split #3 with payNative",
+        "hash": "0x503cf402532ddce3d61e991e6f05e6d8b30b91ef87d5ee9fa06e5fec269781de"
+      },
+      {
+        "label": "Release 0.50 USDC to split #3 recipient 0x1F8e\u20267A49",
+        "hash": "0x3e0c79fe1004015df4190d81822e1f82281c586146c204eda73b4db6930f22dd"
+      },
+      {
+        "label": "Release 0.50 USDC to split #3 recipient 0x0c66\u20269Fb0",
+        "hash": "0xa7754f5852d4e4ddfaef52cb013b7ec03a4d280cc746d16d3710a10fdcd0b557"
+      },
+      {
+        "label": "Release 0.50 USDC to split #1 recipient 0xb5F0\u2026fE9B",
+        "hash": "0x0d6fe9cdb49ce03e59a01afc4d70c4f4d192fd7d13b24b3c93bdbc0502edbf85"
+      },
+      {
+        "label": "Release 0.50 USDC to split #1 recipient 0xf2f5\u20260C2c",
+        "hash": "0xe2f44c4ea3d12b2b67b780090f2a779147ae05a6d2be73321ed68bea048aad3b"
       }
     ]
   },
