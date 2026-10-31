@@ -163,7 +163,7 @@ export function Docs() {
             A <strong className="text-ink">split</strong> is created once with a name, up to 20 recipients and a share for each in basis points that add up to exactly 10,000 (100.00%). After that it can never be edited. There is no owner, no admin function, no fee and no upgrade path anywhere in the contract.
           </p>
           <p>
-            Anyone can pay USDC into a split, and each split also has its own <strong className="text-ink">deposit address</strong> that accepts a plain USDC send from any wallet (MetaMask\u2019s normal Send works), exchange or agent. Each recipient can claim their exact proportional share of everything the split has ever received. Anyone can also push a payout to a recipient with <Code>release</Code>.
+            Anyone can pay USDC into a split, and each split also has its own <strong className="text-ink">deposit address</strong> that accepts a plain USDC send from any wallet (MetaMask’s normal Send works), exchange or agent. Each recipient can claim their exact proportional share of everything the split has ever received. Anyone can also push a payout to a recipient with <Code>release</Code>.
           </p>
         </DocSection>
 
@@ -216,7 +216,7 @@ export function Docs() {
 
         <DocSection id="arc" title="Arc-specific notes">
           <p>
-            On Arc, USDC is the native gas token and has two interfaces over <strong className="text-ink">one balance</strong>: a native 18-decimal one (what a wallet\u2019s normal Send moves, and what pays gas), and an ERC-20 interface at the fixed address <Code>0x3600000000000000000000000000000000000000</Code> with 6 decimals. They are the same funds: 1 token unit (0.000001 USDC) equals 10<sup>12</sup> native units, so a native balance of 5\u00d710<sup>17</sup> shows as 500,000 in <Code>balanceOf</Code>.
+            On Arc, USDC is the native gas token and has two interfaces over <strong className="text-ink">one balance</strong>: a native 18-decimal one (what a wallet’s normal Send moves, and what pays gas), and an ERC-20 interface at the fixed address <Code>0x3600000000000000000000000000000000000000</Code> with 6 decimals. They are the same funds: 1 token unit (0.000001 USDC) equals 10<sup>12</sup> native units, so a native balance of 5×10<sup>17</sup> shows as 500,000 in <Code>balanceOf</Code>.
           </p>
           <H3>Native USDC paths</H3>
           <ul className="list-disc space-y-2 pl-5">
