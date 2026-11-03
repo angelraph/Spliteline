@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {SplitlineNativeBase} from "./Splitline.NativeBase.t.sol";
-import {Splitline} from "../Splitline.sol";
+import {Splitline} from "../src/Splitline.sol";
 
 contract SplitlineNativeFuzzTest is SplitlineNativeBase {
     function testFuzz_PayNativeCreditsExactlyValueOverScale(uint256 units, bytes32 ref) public {

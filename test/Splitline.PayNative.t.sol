@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import {Vm} from "forge-std/Vm.sol";
 import {SplitlineNativeBase} from "./Splitline.NativeBase.t.sol";
-import {Splitline} from "../Splitline.sol";
+import {Splitline} from "../src/Splitline.sol";
 
 /// @dev Force-feeds native value to a target without calling any code on it.
 contract ForceSend {

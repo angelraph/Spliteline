@@ -3,8 +3,8 @@ pragma solidity ^0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
-import {Splitline} from "../Splitline.sol";
-import {DepositAddress} from "../DepositAddress.sol";
+import {Splitline} from "../src/Splitline.sol";
+import {DepositAddress} from "../src/DepositAddress.sol";
 import {MockArcUSDC} from "./mocks/MockArcUSDC.sol";
 
 /// @dev Fixture for the unified-balance model: MockArcUSDC etched at the canonical USDC address.

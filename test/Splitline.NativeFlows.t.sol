@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {SplitlineNativeBase} from "./Splitline.NativeBase.t.sol";
-import {Splitline} from "../Splitline.sol";
+import {Splitline} from "../src/Splitline.sol";
 import {MockArcUSDC} from "./mocks/MockArcUSDC.sol";
 
 /// @dev Nested and blocklist flows under the unified-balance model, plus mock sanity checks.

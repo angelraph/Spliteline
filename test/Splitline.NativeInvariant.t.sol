@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import {Test} from "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
 import {SplitlineNativeBase} from "./Splitline.NativeBase.t.sol";
-import {Splitline} from "../Splitline.sol";
+import {Splitline} from "../src/Splitline.sol";
 import {MockArcUSDC} from "./mocks/MockArcUSDC.sol";
 
 /// @dev Drives native + ERC-20 payments, direct deposits (incl. sub-unit remainders), sweeps and payouts

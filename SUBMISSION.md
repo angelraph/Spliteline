@@ -1,4 +1,4 @@
-# Arc Microgrants submission — Spliteline
+# Arc Microgrants submission: Spliteline
 
 Copy for the DoraHacks form. Everything below is final and checkable onchain or in the Arc
 Studio project.
@@ -8,22 +8,22 @@ Studio project.
 - **Arc Studio project:** https://studio.arc.io/app/a27d937d-b07d-4e2c-9f4c-4a4d3ee574d0
 - **Live app:** https://spliteline.xyz
 - **Repo:** https://github.com/angelraph/Spliteline
-- **Contract (Arc mainnet, source-verified):** `0x44e2d6ca200bf106626d94fc560db81354209b3c` —
+- **Contract (Arc mainnet, source-verified):** `0x44e2d6ca200bf106626d94fc560db81354209b3c`,
   https://explorer.arc.io/address/0x44e2d6ca200bf106626d94fc560db81354209b3c
 - **Example transaction:** 1.00 USDC paid into split #1 with `payNative` (one transaction,
-  native USDC) —
+  native USDC),
   https://explorer.arc.io/tx/0x9d6e11060fde0ec84d58820ecba9dc382d45a2ad2cd60c07516c66b555c31f94
   (deploy tx: https://explorer.arc.io/tx/0x316f6a0c131d85025a708ef5d49e09546a807bc85a7262289ee75a336fce93ea)
 - **Proof journey:** https://spliteline.xyz/proof
 
 ## Short description
 
-Spliteline is immutable USDC revenue splitting on Arc. You create a split once — up to 20
-recipients with fixed percentages — and nobody can ever change it: no owner, no admin, no
+Spliteline is immutable USDC revenue splitting on Arc. You create a split once, up to 20
+recipients with fixed percentages, and nobody can ever change it: no owner, no admin, no
 fee, no upgrade path.
 
 What makes it different: every split gets its own deposit address, so any wallet, exchange,
-payroll tool or AI agent can pay it with a plain USDC send, no integration needed — including
+payroll tool or AI agent can pay it with a plain USDC send, no integration needed, including
 MetaMask's normal Send of Arc's native USDC. Recipients claim their exact share whenever they
 want, and each claim automatically collects whatever is waiting at the deposit address. On
 the site, paying is Arc-native: one transaction with native USDC, no approve and no signature. Splits can feed other splits, so revenue can flow down a chain
