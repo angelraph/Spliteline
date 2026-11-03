@@ -11,11 +11,11 @@ Built for DoraHacks' [Arc Microgrants: Built with Arc Studio](https://dorahacks.
 | | |
 |---|---|
 | Network | Arc mainnet (chain 5042), live since 2026-10-29 |
-| Contract | [`Splitline`](v2/contracts/Splitline.sol), `0x44e2d6ca200bf106626d94fc560db81354209b3c`, source-verified on Sourcify and explorer.arc.io |
+| Contract | [`Splitline`](contracts/Splitline.sol), `0x44e2d6ca200bf106626d94fc560db81354209b3c`, source-verified on Sourcify and explorer.arc.io |
 | Deposit model | Every split gets its own deterministic EIP-1167 clone that accepts a plain send and forwards straight into the split's balance |
 | Payment paths | `payNative` (one-transaction native USDC), `pay` (ERC-20 allowance), `payWithPermit` (EIP-2612 signature), or just send USDC to the deposit address |
 | Payout model | Pull-based: `claim`, `claimTo` (redirect), or `release` (anyone can push a payout, always to the recipient's own address) |
-| Mainnet proof | 14 real transactions — 4 splits created, two one-shot native payments, four releases, a plain MetaMask send, two self-claims (one auto-sweeping a waiting deposit) |
+| Mainnet proof | 17 real transactions — 5 splits created, three one-shot native payments, five releases, a plain MetaMask send, two self-claims (one auto-sweeping a waiting deposit) |
 | Tests | 223 Foundry tests: unit, fuzz, nested splits, blocklist isolation, front-running, salt collisions |
 | Built with | Arc Studio, end to end — contracts, 223 tests, testnet run, the app, the brand |
 
@@ -70,8 +70,13 @@ Everything below happened on Arc mainnet (chain 5042) and is independently check
 | 12 | **A plain MetaMask Send** of 1.00 USDC, no app involved, straight to split #4's deposit address | [`0x72468fc5…e05fa7`](https://explorer.arc.io/tx/0x72468fc5641a30e473d4dd86cf3f5de65e42c26d393d565acbc74a298ee05fa7) |
 | 13 | Friend `0x4775…AC7C3B` claims 0.50 USDC from their own wallet — this one transaction also auto-sweeps the 1.00 USDC waiting at the deposit address | [`0x1b5c7c87…97c6c8`](https://explorer.arc.io/tx/0x1b5c7c874ed972e7736b517dbfc66e2568ebc9665ef4ebc5337003908497c6c8) |
 | 14 | Friend `0xb7Cc…ED61cB` claims their 0.50 USDC from their own wallet | [`0xd40859d4…999a919`](https://explorer.arc.io/tx/0xd40859d447a5112a66cede2959ff50083ccb6b677ef49f5ef7be9fadd999a919) |
+| 15 | Create split #7, "Agent-to-agent payment demo" (one recipient) | [`0xb361ce46…cc7ba8`](https://explorer.arc.io/tx/0xb361ce46cdf12b8922fa9e0ca024e898fbf9dd4f8387d3591bfc78e8b4cc7ba8) |
+| 16 | Pay 0.02 USDC into split #7 with `payNative` — one transaction, no approve | [`0x84797ddf…f1084`](https://explorer.arc.io/tx/0x84797ddf367ebf0bef380240002cce5d18990cdd7e2ea32b4bc8e6fbc13f1084) |
+| 17 | Release 0.02 USDC to split #7's recipient | [`0x252c9e3f…536b95a`](https://explorer.arc.io/tx/0x252c9e3fad9469917d02b69cd81d4c103bd78797012aed333a401ade5536b95a) |
 
-That last stretch (#11–14) is the whole point in four transactions: a split gets created, someone pays it the way they'd pay a friend — no wallet connect, no approve, just "Send" — and both recipients walk away with their share by claiming from their own wallets, one claim quietly sweeping in money that was just sitting there waiting. Nobody but the two recipients touched a private key.
+That stretch (#11–14) is the whole point in four transactions: a split gets created, someone pays it the way they'd pay a friend — no wallet connect, no approve, just "Send" — and both recipients walk away with their share by claiming from their own wallets, one claim quietly sweeping in money that was just sitting there waiting. Nobody but the two recipients touched a private key.
+
+Transactions #15–17 are a live proof of the same `payNative`/`release` path used by [`scripts/agent-to-agent.ts`](scripts/agent-to-agent.ts) — a script that plays out the full software-to-software case end to end: a customer agent pays a service agent directly, then the service agent forwards that exact revenue into its own Spliteline split, one transaction each, no human clicking either step. The script hasn't been run unattended on mainnet yet (that needs two independently funded agent wallets); #15–17 prove the mechanism it relies on actually works.
 
 ## Why Spliteline
 
@@ -112,13 +117,13 @@ Spliteline v2 was built inside the [Arc Studio project linked above](https://stu
 
 1. **Contract and tests.** Studio wrote `Splitline.sol` and `DepositAddress.sol` from a written spec, confirmed on Arc Testnet that USDC supports permit, and wrote 164 Foundry tests plus 4 invariant suites (unit, fuzz, nested, blocklist, front-running, salt). Its own security review caught and fixed a real issue in the first draft: a deposit-address salt a front-runner could have shifted.
 2. **Auto-sweep.** Added after that review; Studio re-ran the full suite and a second security pass.
-3. **Testnet, end to end.** Studio deployed to Arc Testnet and ran 19 transactions covering every flow — see [`v2/TESTNET.md`](v2/TESTNET.md) — checking every balance on chain, not just asserting it in a test.
+3. **Testnet, end to end.** Studio deployed to Arc Testnet and ran 19 transactions covering every flow — see [`TESTNET.md`](TESTNET.md) — checking every balance on chain, not just asserting it in a test.
 4. **The app.** Studio built the frontend, tested it in a headless browser against testnet (14 more transactions), fixed what it found, and checked every page at 375px and 1280px for overflow and console errors.
 5. **Brand.** Studio matched the existing Spliteline brand and site structure, and added the Docs, FAQ, and Proof pages.
 6. **Mainnet.** Arc Studio doesn't sign mainnet transactions itself, so the mainnet deploy went out from the builder's own wallet through a one-button deploy page holding the compiled contract — checked byte-for-byte against Studio's already-tested testnet build before and after deploying.
 7. **Going Arc-native.** The first real mainnet test exposed a bug: a plain MetaMask *Send* to a deposit address reverted, because the clone had no `receive()`. Studio added one, added `payNative`, proved on testnet that native USDC lands exactly right and sweeps and pays out correctly, wrote 54 more tests (223 total), made native the app's default payment path, and the redeployed contracts are source-verified exact matches on Sourcify and explorer.arc.io.
 
-Code was exported from Studio with its *Download Code* button and committed under [`v2/`](v2/). Everything outside `v2/` is v1, the earlier prototype — see [below](#v1-prototype).
+Code was exported from Studio with its *Download Code* button and committed at the repo root. The earlier v1 prototype lives under [`v1/`](v1/), kept for history — see [below](#v1-prototype).
 
 ## Security and verification
 
@@ -131,24 +136,25 @@ Code was exported from Studio with its *Download Code* button and committed unde
 ## Repository layout
 
 ```
-v2/                  Spliteline v2 — the Arc Studio project, and the one that's live
-  contracts/         Splitline.sol, DepositAddress.sol, tests (forge test)
-  src/                React + Vite + wagmi/viem app
-  public/             Brand assets (mark, wordmark, icons, OG image)
-  scripts/            Arc Studio deploy helpers
-  TESTNET.md          Testnet end-to-end transaction log
-contracts/, app/, scripts/   v1 prototype (see below)
+contracts/           Splitline.sol, DepositAddress.sol, tests (forge test)
+src/                  React + Vite + wagmi/viem app
+public/               Brand assets (mark, wordmark, icons, OG image)
+scripts/              Arc Studio deploy helpers, agent-to-agent.ts
+lib/                  Foundry dependencies (forge-std)
+TESTNET.md            Testnet end-to-end transaction log
+v1/                   The earlier prototype (contracts/, app/, scripts/) — see below
 ```
+
+This used to be nested under a `v2/` folder, back when the repo held two live versions side by side. Now that v1 is retired, the current product lives at the repo root like any normal project, and v1 moved into its own clearly-labeled corner instead.
 
 ## Run it
 
 ```bash
-cd v2
 bun install
 cp .env.example .env
 bun run dev              # the app
-forge test                # the contracts — 223 tests, including fuzz and invariants
-bun run build              # production build
+forge test                 # the contracts — 223 tests, including fuzz and invariants
+bun run build               # production build
 ```
 
 Every environment variable is public, nothing secret: `VITE_SPLITLINE_ADDRESS_TESTNET`, `VITE_SPLITLINE_DEPLOY_BLOCK_TESTNET`, `VITE_SPLITLINE_ADDRESS_MAINNET`, `VITE_SPLITLINE_DEPLOY_BLOCK_MAINNET`, `VITE_PUBLIC_URL`. While the mainnet address is empty, mainnet views just show "Coming soon on mainnet" instead of breaking.
@@ -165,7 +171,7 @@ Every environment variable is public, nothing secret: `VITE_SPLITLINE_ADDRESS_TE
 
 ## v1 prototype
 
-v1 (`contracts/`, `app/`, `scripts/`) was the first version: a single-contract split with `pay`, `claim`, `claimTo`, and `release`, 30 Foundry tests, and an `agent-pays.ts` software-to-software demo. It was written outside Arc Studio, then imported into a separate Studio project for testing, review, and a testnet deploy; its mainnet deploy ran locally with Foundry. It moved real USDC on Arc mainnet too: a 60/40 split, a 2.000001 USDC payment, an `agent-pays.ts` payment of 0.05 USDC (ref `agent-demo`), and two payouts of 1.23 and 0.82 USDC. v2 replaces it entirely, but it's kept in the repo because it's part of the honest history of how this got built.
+v1 (`v1/contracts/`, `v1/app/`, `v1/scripts/`) was the first version: a single-contract split with `pay`, `claim`, `claimTo`, and `release`, 30 Foundry tests, and an `agent-pays.ts` software-to-software demo. It was written outside Arc Studio, then imported into a separate Studio project for testing, review, and a testnet deploy; its mainnet deploy ran locally with Foundry. It moved real USDC on Arc mainnet too: a 60/40 split, a 2.000001 USDC payment, an `agent-pays.ts` payment of 0.05 USDC (ref `agent-demo`), and two payouts of 1.23 and 0.82 USDC. v2 replaces it entirely, but it's kept in the repo because it's part of the honest history of how this got built.
 
 ## Honest limits
 

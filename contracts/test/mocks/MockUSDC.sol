@@ -1,30 +1,19 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.20;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 
-/// @notice A 6-decimal ERC-20 standing in for Arc's USDC in tests. `Splitline` is deployed
-///         against this mock via `vm.etch`-free constructor injection in a test harness,
-///         never against the hardcoded mainnet address directly.
-contract MockUSDC is ERC20 {
-    constructor() ERC20("Mock USDC", "USDC") {}
+/// @dev Test-only USDC mimic: 6 decimals, EIP-2612 permit, public mint, and a blocklist
+/// that makes any transfer touching a blocked address revert (like Circle's USDC).
+/// Safe to `vm.etch`: only immutables (EIP712 name/version) are relied on; the blocklist
+/// and balances start empty after etch.
+contract MockUSDC is ERC20Permit {
+    error Blocked(address account);
 
-    function decimals() public pure override returns (uint8) {
-        return 6;
-    }
+    mapping(address => bool) public blocked;
 
-    function mint(address to, uint256 amount) external {
-        _mint(to, amount);
-    }
-}
-
-/// @notice A mock USDC that reverts transfers to a single blocklisted address, standing in
-///         for Arc USDC's real blocklist behavior, to prove one bad recipient can never
-///         block another recipient's claim.
-contract BlocklistingMockUSDC is ERC20 {
-    address public blocked;
-
-    constructor() ERC20("Blocklisting Mock USDC", "USDC") {}
+    constructor() ERC20("USD Coin", "USDC") ERC20Permit("USD Coin") {}
 
     function decimals() public pure override returns (uint8) {
         return 6;
@@ -34,16 +23,13 @@ contract BlocklistingMockUSDC is ERC20 {
         _mint(to, amount);
     }
 
-    function setBlocked(address who) external {
-        blocked = who;
+    function setBlocked(address account, bool isBlocked) external {
+        blocked[account] = isBlocked;
     }
 
     function _update(address from, address to, uint256 value) internal override {
-        // `blocked` defaults to address(0); only enforce once a real address is set,
-        // otherwise minting (from == address(0)) would always revert.
-        if (blocked != address(0)) {
-            require(to != blocked && from != blocked, "blocklisted");
-        }
+        if (blocked[from]) revert Blocked(from);
+        if (blocked[to]) revert Blocked(to);
         super._update(from, to, value);
     }
 }

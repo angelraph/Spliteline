@@ -196,7 +196,7 @@ export function Docs() {
 
         <DocSection id="reference" title="Contract reference">
           <p>
-            Source: <a className="font-semibold text-accent hover:underline" href="https://github.com/angelraph/Spliteline/tree/main/v2/contracts" target="_blank" rel="noopener noreferrer">v2/contracts</a> in the repository. The contract is named <Code>Splitline</Code> in code.
+            Source: <a className="font-semibold text-accent hover:underline" href="https://github.com/angelraph/Spliteline/tree/main/contracts" target="_blank" rel="noopener noreferrer">contracts</a> in the repository. The contract is named <Code>Splitline</Code> in code.
           </p>
           <H3>Functions</H3>
           <RefList head={['Function', 'What it does']} rows={FUNCTIONS.map(([a, b]) => [fn(a), b])} />
