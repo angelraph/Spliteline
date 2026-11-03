@@ -58,6 +58,18 @@
       {
         "label": "Friend 0xb7Cc\u2026ED61cB claims 0.50 USDC from their own wallet",
         "hash": "0xd40859d447a5112a66cede2959ff50083ccb6b677ef49f5ef7be9fadd999a919"
+      },
+      {
+        "label": "Create split #7 \"Agent-to-agent payment demo\" (one recipient)",
+        "hash": "0xb361ce46cdf12b8922fa9e0ca024e898fbf9dd4f8387d3591bfc78e8b4cc7ba8"
+      },
+      {
+        "label": "Pay 0.02 USDC into split #7 with payNative (one transaction, native USDC)",
+        "hash": "0x84797ddf367ebf0bef380240002cce5d18990cdd7e2ea32b4bc8e6fbc13f1084"
+      },
+      {
+        "label": "Release 0.02 USDC to split #7's recipient",
+        "hash": "0x252c9e3fad9469917d02b69cd81d4c103bd78797012aed333a401ade5536b95a"
       }
     ]
   },
