@@ -18,7 +18,6 @@
  * transaction each. Nobody clicked a button.
  *
  * Usage:
- *   cd v2
  *   cp .env.example .env
  *   # fill in CUSTOMER_PRIVATE_KEY, SERVICE_PRIVATE_KEY, SPLITLINE_ADDRESS, SPLIT_ID
  *   bun run agent-to-agent -- --price 0.02 --ref "job-4821"
