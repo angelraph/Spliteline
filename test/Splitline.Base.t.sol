@@ -5,8 +5,8 @@ import {Test} from "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 import {IERC20Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
-import {Splitline} from "../Splitline.sol";
-import {DepositAddress} from "../DepositAddress.sol";
+import {Splitline} from "../src/Splitline.sol";
+import {DepositAddress} from "../src/DepositAddress.sol";
 import {MockUSDC} from "./mocks/MockUSDC.sol";
 
 /// @dev Shared fixture: MockUSDC etched at the canonical USDC address, then Splitline deployed.

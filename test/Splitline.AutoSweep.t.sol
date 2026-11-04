@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import {Vm} from "forge-std/Vm.sol";
 import {SplitlineTestBase} from "./Splitline.Base.t.sol";
-import {Splitline} from "../Splitline.sol";
+import {Splitline} from "../src/Splitline.sol";
 
 /// @dev claim / claimTo / release best-effort sweep their own deposit clone before computing what is owed.
 contract SplitlineAutoSweepTest is SplitlineTestBase {

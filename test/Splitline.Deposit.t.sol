@@ -2,8 +2,8 @@
 pragma solidity ^0.8.20;
 
 import {SplitlineTestBase} from "./Splitline.Base.t.sol";
-import {Splitline} from "../Splitline.sol";
-import {DepositAddress} from "../DepositAddress.sol";
+import {Splitline} from "../src/Splitline.sol";
+import {DepositAddress} from "../src/DepositAddress.sol";
 
 contract SplitlineDepositTest is SplitlineTestBase {
     // ------------------------------------------------------------ DepositAddress contract

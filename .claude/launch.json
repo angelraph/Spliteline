@@ -9,14 +9,14 @@
     },
     {
       "name": "spliteline",
-      "runtimeExecutable": "node",
-      "runtimeArgs": ["node_modules/vite/bin/vite.js", "--port", "5184", "--strictPort"],
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "cd app && node node_modules/vite/bin/vite.js --port 5184 --strictPort"],
       "port": 5184
     },
     {
       "name": "spliteline-prod",
-      "runtimeExecutable": "node",
-      "runtimeArgs": ["node_modules/vite/bin/vite.js", "preview", "--port", "5185", "--strictPort"],
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "cd app && node node_modules/vite/bin/vite.js preview --port 5185 --strictPort"],
       "port": 5185
     }
   ]

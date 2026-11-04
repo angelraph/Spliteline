@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import {Vm} from "forge-std/Vm.sol";
 import {SplitlineTestBase} from "./Splitline.Base.t.sol";
-import {Splitline} from "../Splitline.sol";
+import {Splitline} from "../src/Splitline.sol";
 import {MockUSDC} from "./mocks/MockUSDC.sol";
 
 /// @dev Auto-sweep behaviour with a blocklisted deposit clone, and nesting driven only by release/claim.

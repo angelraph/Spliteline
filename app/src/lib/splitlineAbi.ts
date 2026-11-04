@@ -1,4 +1,4 @@
-// Generated from contracts/out/Splitline.sol/Splitline.json (v2 + native USDC paths). Do not hand-edit.
+// Generated from out/Splitline.sol/Splitline.json (v2 + native USDC paths). Do not hand-edit.
 export const splitlineAbi = [
   {
     "type": "constructor",

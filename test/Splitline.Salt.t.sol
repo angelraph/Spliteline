@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {SplitlineTestBase} from "./Splitline.Base.t.sol";
-import {Splitline} from "../Splitline.sol";
+import {Splitline} from "../src/Splitline.sol";
 
 /// @dev Salt = keccak256(abi.encode(creator, name, recipients, bps)); id is not part of it.
 contract SplitlineSaltTest is SplitlineTestBase {
