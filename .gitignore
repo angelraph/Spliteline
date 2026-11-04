@@ -2,6 +2,7 @@ node_modules/
 out/
 cache/
 broadcast/
+.claude/
 .env
 .env.*
 keys.env
