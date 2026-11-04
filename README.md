@@ -1,6 +1,6 @@
 # Spliteline
 
-**Live app:** [spliteline.xyz](https://spliteline.xyz) · **Demo video:** [youtu.be/KAPCC6YkgP4](https://youtu.be/KAPCC6YkgP4) · **Arc Studio project:** [Spliteline v2](https://studio.arc.io/app/a27d937d-b07d-4e2c-9f4c-4a4d3ee574d0) · **Proof:** [spliteline.xyz/proof](https://spliteline.xyz/proof) · **Repo:** [github.com/angelraph/Spliteline](https://github.com/angelraph/Spliteline)
+**Live app:** [spliteline.xyz](https://spliteline.xyz) · **Demo video:** [youtu.be/KAPCC6YkgP4](https://youtu.be/KAPCC6YkgP4) ([in this repo](video/demo.mp4)) · **Arc Studio project:** [Spliteline v2](https://studio.arc.io/app/a27d937d-b07d-4e2c-9f4c-4a4d3ee574d0) · **Proof:** [spliteline.xyz/proof](https://spliteline.xyz/proof) · **Repo:** [github.com/angelraph/Spliteline](https://github.com/angelraph/Spliteline)
 
 **Split revenue. Build together.** Spliteline is immutable, pull-based USDC revenue splitting on [Arc](https://docs.arc.io). You create a split once (up to 20 recipients, fixed percentages), and from that moment nobody can ever touch it again. No owner, no admin, no fee, no upgrade path. Every split gets its own deposit address, so paying it is as easy as sending money to a person: any wallet, any exchange, any payroll tool, any AI agent, no integration required.
 
@@ -90,12 +90,23 @@ Transactions #15–17 are a live proof of the same `payNative`/`release` path us
 
 ## Product tour
 
-The app is four real pages plus two supporting ones, all reading live from the contract and its events. There's no backend and no database, so what you see on screen is always exactly what's on chain.
+The app is four real pages plus two supporting ones, all reading live from the contract and its events. There's no backend and no database, so what you see on screen is always exactly what's on chain. The screenshots below are the live site, not mockups.
+
+![Landing page](media/landing.jpg)
 
 - **`/` (Create).** Name a split, add up to 20 recipients, and set each one's share with a live basis-points meter that has to land on exactly 100% before the Create button unlocks. One transaction, and the split and its deposit address exist forever.
+
+![Create a split](media/create.jpg)
+
 - **`/s/:id` (Pay and watch).** Shows the split's recipients and their shares, a QR code and the deposit address for a plain send, a pay card defaulting to one-click native USDC, a live activity feed read straight from `Paid`/`Claimed` events, and the "Share a payment link" box that pre-fills amount and reference for whoever you send it to.
+
+![A real split page](media/split-page.jpg)
+
 - **`/claim` (Claim).** Every split the connected wallet is a recipient of, with exactly what's currently owed and a one-click claim that also sweeps in anything waiting at the deposit address.
 - **`/proof` (Proof).** The project's real transaction history on both mainnet and testnet, each one linked straight to explorer.arc.io; the table above is pulled from this page.
+
+![The proof page](media/proof.jpg)
+
 - **`/embed/:id`** is the pay card alone, meant to be dropped into another site as an iframe so a creator or project can take payments without sending people away from their own page.
 - **Docs and FAQ** are the plain-language version of this README: what a split is, what a deposit address is, what happens if you send USDC to the wrong place, and the handful of questions a first-time user actually asks.
 
@@ -146,7 +157,10 @@ app/                    The React + Vite + wagmi/viem frontend, self-contained
   public/               Brand assets (mark, wordmark, icons, OG image)
   scripts/              Arc Studio deploy helpers, agent-to-agent.ts
 foundry.toml, remappings.txt   Foundry config, at the repo root since src/test/script/lib all live there
+media/                   Screenshots used in this README, from the live site
+video/                   The demo video, and video/README.md
 TESTNET.md              Testnet end-to-end transaction log
+LICENSE                  MIT
 v1/                      The earlier prototype (contracts/, app/, scripts/), see below
 ```
 
